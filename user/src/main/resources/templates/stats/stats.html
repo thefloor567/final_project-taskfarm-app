@@ -81,36 +81,65 @@
   <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
   <script th:src="@{/js/scripts.bundle.js}"></script>
   <script>
-    // 🚧 더미. API 나오면 교체:
-    //   GET /api/stats/todos  (할일 완료 통계)
-    //   GET /api/stats/growth (경험치/농장 성장)
     const stats = {
-      totalDone: 47,
-      completionRate: 78,
-      currentLevel: 5,
-      categories: [
-        { name: '건강', rate: 85, color: '#1BC5BD' },
-        { name: '공부', rate: 72, color: '#3699FF' },
-        { name: '집안일', rate: 60, color: '#FFA800' },
-      ],
-      weekly: {
-        labels: ['월', '화', '수', '목', '금', '토', '일'],
-        data: [3, 5, 2, 6, 4, 7, 5]
-      },
-      xp: {
-        labels: ['1주', '2주', '3주', '4주', '5주'],
-        data: [120, 280, 450, 600, 820]
-      }
+      totalDone: 0,
+      completionRate: 0,
+      currentLevel: 1,
+      categories: [],
+      weekly: { labels: [], data: [] },
+      xp: { labels: [], data: [] }
     };
 
-    document.addEventListener('DOMContentLoaded', function () {
-      // 요약
+    document.addEventListener('DOMContentLoaded', async function () {
+      await loadStats();
       document.getElementById('totalDone').textContent = stats.totalDone;
       document.getElementById('completionRate').textContent = stats.completionRate + '%';
       document.getElementById('currentLevel').textContent = 'Lv.' + stats.currentLevel;
-
       renderCharts();
     });
+
+    async function loadStats() {
+      try {
+        const response = await fetch('/api/stats');
+        const body = await response.json();
+
+        if (!body.result) {
+          console.warn(body.message);
+          return;
+        }
+
+        const dashboard = body.data;
+        const summary = dashboard.summary || {};
+        const categories = dashboard.categories || [];
+        const weekly = dashboard.weekly || [];
+        const expGrowth = dashboard.expGrowth || [];
+
+        stats.totalDone = summary.totalDone || 0;
+        stats.completionRate = summary.completionRate || 0;
+        stats.currentLevel = summary.currentLevel || 1;
+        stats.categories = categories.length > 0
+          ? categories.map(category => ({
+              name: category.categoryName,
+              rate: category.completionRate,
+              color: category.color || '#cccccc'
+            }))
+          : [
+              { name: '건강', rate: 0, color: '#1BC5BD' },
+              { name: '공부', rate: 0, color: '#3699FF' },
+              { name: '집안일', rate: 0, color: '#FFA800' }
+            ];
+        stats.weekly = {
+          labels: weekly.map(item => item.label),
+          data: weekly.map(item => item.doneCount)
+        };
+        stats.xp = {
+          labels: expGrowth.map(item => item.label),
+          data: expGrowth.map(item => item.amount)
+        };
+      } catch (error) {
+        console.error('통계 데이터를 불러오지 못했습니다.', error);
+      }
+    }
 
     function renderCharts() {
       // ApexCharts는 Metronic plugins.bundle.js에 포함됨
@@ -121,11 +150,15 @@
 
       // 1) 카테고리별 완료율 (가로 막대)
       new ApexCharts(document.getElementById('categoryChart'), {
-        series: [{ name: '완료율', data: stats.categories.map(c => c.rate) }],
+        series: [{
+          name: '완료율',
+          data: stats.categories.map(c => ({ x: c.name, y: c.rate }))
+        }],
         chart: { type: 'bar', height: 200, toolbar: { show: false } },
         plotOptions: { bar: { horizontal: true, borderRadius: 6, distributed: true } },
         colors: stats.categories.map(c => c.color),
-        xaxis: { categories: stats.categories.map(c => c.name), max: 100 },
+        xaxis: { min: 0, max: 100, tickAmount: 10 },
+        yaxis: { labels: { show: true } },
         dataLabels: { enabled: true, formatter: v => v + '%' },
         legend: { show: false }
       }).render();
@@ -137,6 +170,7 @@
         plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
         colors: ['#3699FF'],
         xaxis: { categories: stats.weekly.labels },
+        yaxis: { min: 0, max: 7, tickAmount: 1 },
         dataLabels: { enabled: false }
       }).render();
 
@@ -148,6 +182,7 @@
         stroke: { curve: 'smooth', width: 3 },
         fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 } },
         xaxis: { categories: stats.xp.labels },
+        yaxis: { min: 100, max: 900, tickAmount: 4 },
         dataLabels: { enabled: false }
       }).render();
     }
