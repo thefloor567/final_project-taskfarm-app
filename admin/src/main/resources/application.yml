@@ -17,12 +17,12 @@ spring:
 
   jpa:
     hibernate:
-      # ⚠️ 어드민은 조회 위주. 스키마는 DDL로 직접 생성했으므로 validate(검증만).
       ddl-auto: ${JPA_DDL_AUTO:validate}
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
+        physical_naming_strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     show-sql: true
 
   autoconfigure:
