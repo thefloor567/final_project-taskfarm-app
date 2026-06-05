@@ -45,4 +45,22 @@ public class TbSeed extends BaseEntity {
     private boolean isActive = true;
 
     // ✏️ TODO: 어드민 수정 메서드
+    
+    
+    /** 구매 가능 여부 검증 (판매중 + 재고). 수량만큼 재고 차감. */
+    public void purchase(int qty) {
+        if (!isActive) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("현재 판매하지 않는 씨앗입니다.");
+        }
+        if (qty <= 0) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("구매 수량이 올바르지 않습니다.");
+        }
+        if (stock < qty) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("재고가 부족합니다.");
+        }
+        stock -= qty;
+    }
 }

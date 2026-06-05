@@ -51,4 +51,13 @@ public class TbCropInv {
     public void add(int amount) {
         this.qty += amount;
     }
+    
+    /** 작물 차감(주문 납품). 부족하면 예외. */
+    public void consume(int amount) {
+        if (qty < amount) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("작물이 부족합니다.");
+        }
+        qty -= amount;
+    }
 }

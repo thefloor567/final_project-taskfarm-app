@@ -43,4 +43,25 @@ public class TbOrder {
     public enum State { OPEN, DONE }
 
     // ✏️ TODO: fulfill()
+    
+    /** 새 주민 주문 생성 (OPEN 상태) */
+    public static TbOrder create(Long idxFarm, String villager, int reward) {
+        TbOrder o = new TbOrder();
+        o.idxFarm = idxFarm;
+        o.villager = villager;
+        o.reward = reward;
+        o.state = State.OPEN;
+        o.createDate = java.time.LocalDateTime.now();
+        return o;
+    }
+
+    /** 주문 이행 처리 (OPEN -> DONE). 이미 완료면 예외. */
+    public void fulfill() {
+        if (state != State.OPEN) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("이미 완료된 주문입니다.");
+        }
+        state = State.DONE;
+        doneDate = java.time.LocalDateTime.now();
+    }
 }
