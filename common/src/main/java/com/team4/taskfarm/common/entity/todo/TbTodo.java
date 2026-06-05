@@ -54,4 +54,49 @@ public class TbTodo extends BaseEntity {
     public enum Priority { A, B, C }
 
     // ✏️ TODO: complete(), update 메서드
+    
+    // update 메서드
+    public void update(Long idxCat, String title, String content, Priority priority, LocalDateTime dueDate) {
+    	this.idxCat = idxCat;
+    	this.title = title;
+    	this.content = content;
+    	this.priority = priority != null ? priority : Priority.C;
+    	this.dueDate = dueDate;
+    }
+    
+    // complete 메서드
+    public void complete() {
+        if (this.isDone) {
+            return;
+        }
+
+        this.isDone = true;
+        this.completeDate = LocalDateTime.now();
+    }
+    
+    // soft delete 메서드
+    public void softDelete() {
+    	this.deleteDate = LocalDateTime.now();
+    }
+    
+    // 새로운 Todo 엔티티를 만들어주는 메서드
+    public static TbTodo of(
+            Long idxUser,
+            Long idxCat,
+            String title,
+            String content,
+            Priority priority,
+            LocalDateTime dueDate
+    ) {
+        TbTodo todo = new TbTodo();
+        todo.idxUser = idxUser;
+        todo.idxCat = idxCat;
+        todo.title = title;
+        todo.content = content;
+        todo.priority = priority != null ? priority : Priority.C;
+        todo.dueDate = dueDate;
+        return todo;
+    }
+
+
 }
