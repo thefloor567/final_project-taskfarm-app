@@ -46,4 +46,18 @@ public class TbSeedInv {
         }
         qty--;
     }
+    
+    /** 신규 보유 씨앗 생성 */
+    public static TbSeedInv create(Long idxFarm, Long idxSeed, int qty) {
+        TbSeedInv inv = new TbSeedInv();
+        inv.idxFarm = idxFarm;
+        inv.idxSeed = idxSeed;
+        inv.qty = qty;
+        return inv;
+    }
+
+    /** 수량 적립(구매) */
+    public void add(int amount) {
+        if (amount > 0) this.qty += amount;
+    }
 }

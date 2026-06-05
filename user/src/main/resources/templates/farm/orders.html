@@ -33,40 +33,50 @@
   <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
   <script th:src="@{/js/scripts.bundle.js}"></script>
   <script>
-    // 🚧 더미. API(/api/farm/orders) 나오면 교체.
-    // 보유 작물 (이행 가능 판단용) — 실제론 /api/farm/inventory/crops 와 동기화
-    let myCrops = { '토마토': 8, '딸기': 2, '당근': 0 };
+    // ✅ 서버 권위. 작물·코인 차감·새 주문 교체 전부 서버가 처리.
+    //    프론트는 GET /api/orders 로 받아 그리고, 이행 성공 시 다시 받아온다.
+    const EMOJI = { radish: '🥗', tomato: '🍅', corn: '🌽', pumpkin: '🎃', carrot: '🥕', strawberry: '🍓' };
+    function emojiOf(code) { return EMOJI[code] || '🌱'; }
 
-    let orders = [
-      { orderId: 1, resident: '🐰 토끼', crop: '토마토', emoji: '🍅', need: 5, reward: 120 },
-      { orderId: 2, resident: '🐻 곰', crop: '딸기', emoji: '🍓', need: 4, reward: 200 },
-      { orderId: 3, resident: '🐱 고양이', crop: '당근', emoji: '🥕', need: 3, reward: 90 },
-    ];
+    let orders = [];
 
     document.addEventListener('DOMContentLoaded', function () {
-      render();
+      loadOrders();
     });
+
+    async function loadOrders() {
+      try {
+        const res = await fetch('/api/orders', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('주문을 불러오지 못했어요.');
+        const body = await res.json();
+        orders = (body.data ?? body) || [];
+        render();
+      } catch (e) {
+        warn(e.message || '주문을 불러오지 못했어요.');
+      }
+    }
 
     function render() {
       const box = document.getElementById('orderContainer');
       box.innerHTML = '';
 
-      orders.forEach(o => {
-        const have = myCrops[o.crop] || 0;
-        const canFulfill = have >= o.need;
+      orders.filter(o => o.state === 'OPEN').forEach(o => {
+        // 요구 작물(현재 규칙은 1종, 구조는 여러 종 대응)
+        const itemsText = (o.items || []).map(it =>
+          `${it.cropName} <b>${it.need}</b>개 <span class="text-gray-400">(보유 ${it.have})</span>`
+        ).join(', ');
+        const firstCode = o.items && o.items[0] ? o.items[0].code : null;
+        const canFulfill = o.canFulfill;
 
         const card = document.createElement('div');
         card.className = 'card shadow-sm';
         card.innerHTML = `
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
-                    <div style="font-size:32px;">${o.emoji}</div>
+                    <div style="font-size:32px;">${emojiOf(firstCode)}</div>
                     <div class="flex-grow-1">
-                        <div class="fw-bold fs-6 text-gray-800">${o.resident}</div>
-                        <div class="fs-7 text-gray-600 mt-1">
-                            ${o.crop} <b>${o.need}</b>개 필요
-                            <span class="text-gray-400">(보유 ${have})</span>
-                        </div>
+                        <div class="fw-bold fs-6 text-gray-800">${o.villager}</div>
+                        <div class="fs-7 text-gray-600 mt-1">${itemsText}</div>
                         <div class="fs-8 text-warning fw-semibold mt-1">🪙 보상 ${o.reward}</div>
                     </div>
                     <button class="btn btn-sm ${canFulfill ? 'btn-primary' : 'btn-light text-gray-400'}"
@@ -81,50 +91,48 @@
       });
     }
 
-    function fulfillOrder(orderId) {
+    async function fulfillOrder(orderId) {
       const o = orders.find(x => x.orderId === orderId);
       if (!o) return;
+      if (!o.canFulfill) return warn('작물이 부족해요!');
 
-      const have = myCrops[o.crop] || 0;
-      if (have < o.need) {
-        return Swal.fire({
-          text: "작물이 부족해요!", icon: "warning",
-          buttonsStyling: false, confirmButtonText: "확인",
-          customClass: { confirmButton: "btn btn-primary" }
+      const itemsText = (o.items || []).map(it => `${it.cropName} ${it.need}개`).join(', ');
+      const result = await Swal.fire({
+        html: `${o.villager}에게 ${itemsText}를 주고<br><b class="text-warning">🪙 ${o.reward}</b> 받을까요?`,
+        icon: 'question', buttonsStyling: false, showCancelButton: true,
+        confirmButtonText: '이행', cancelButtonText: '취소',
+        customClass: { confirmButton: 'btn btn-primary', cancelButton: 'btn btn-light' }
+      });
+      if (!result.isConfirmed) return;
+
+      try {
+        const res = await fetch(`/api/orders/${orderId}/fulfill`, {
+          method: 'POST', headers: { 'Accept': 'application/json' }
         });
-      }
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || body.result === false) {
+          throw new Error(body.message || '이행에 실패했어요.');
+        }
 
-      Swal.fire({
-        html: `${o.resident}에게 ${o.crop} ${o.need}개를 주고<br><b class="text-warning">🪙 ${o.reward}</b> 받을까요?`,
-        icon: "question", buttonsStyling: false, showCancelButton: true,
-        confirmButtonText: "이행", cancelButtonText: "취소",
-        customClass: { confirmButton: "btn btn-primary", cancelButton: "btn btn-light" }
-      }).then(result => {
-        if (!result.isConfirmed) return;
-
-        // 🚧 POST /api/farm/orders/{id}/fulfill
-        //    서버가 작물 차감 → 코인 지급 → 슬롯에 새 주문 교체.
-        //    응답으로 갱신된 주문/코인/작물 받아서 반영하는 게 정석.
-        myCrops[o.crop] -= o.need;
-
-        // 더미: 슬롯에 새 주문 교체
-        const pool = [
-          { resident: '🐶 강아지', crop: '토마토', emoji: '🍅', need: 6, reward: 150 },
-          { resident: '🐹 햄스터', crop: '딸기', emoji: '🍓', need: 2, reward: 110 },
-          { resident: '🦊 여우', crop: '당근', emoji: '🥕', need: 4, reward: 130 },
-        ];
-        const fresh = pool[Math.floor(Math.random() * pool.length)];
-        o.resident = fresh.resident; o.crop = fresh.crop;
-        o.emoji = fresh.emoji; o.need = fresh.need; o.reward = fresh.reward;
-
-        render();
+        const reward = o.reward;
+        await loadOrders();   // 서버 최신 상태(새 주문 교체 포함) 다시 로드
         Swal.fire({
-          html: `주문 완료! 🪙 <b>${o.reward}</b> 획득`, icon: "success",
-          buttonsStyling: false, confirmButtonText: "확인",
-          customClass: { confirmButton: "btn btn-primary" }
+          html: `주문 완료! 🪙 <b>${reward}</b> 획득`, icon: 'success',
+          buttonsStyling: false, confirmButtonText: '확인',
+          customClass: { confirmButton: 'btn btn-primary' }
         });
+      } catch (e) {
+        warn(e.message);
+      }
+    }
+
+    function warn(msg) {
+      Swal.fire({
+        text: msg, icon: 'warning', buttonsStyling: false,
+        confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' }
       });
     }
+
   </script>
 </body>
 

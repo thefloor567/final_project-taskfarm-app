@@ -27,4 +27,14 @@ public class TbOrderItem {
 
     @Column(name = "Qty", nullable = false)
     private int qty;
+    
+    
+    /** 주문 요구 작물 항목 생성 */
+    public static TbOrderItem create(Long idxOrder, Long idxSeed, int qty) {
+        TbOrderItem item = new TbOrderItem();
+        item.idxOrder = idxOrder;
+        item.idxSeed = idxSeed;
+        item.qty = qty;
+        return item;
+    }
 }

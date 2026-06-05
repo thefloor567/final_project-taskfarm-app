@@ -32,19 +32,37 @@
   <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
   <script th:src="@{/js/scripts.bundle.js}"></script>
   <script>
-    // 🚧 더미. API(/api/farm/shop/seeds) 나오면 교체.
-    let coin = 240;
-    let seeds = [
-      { seedId: 1, name: '토마토 씨앗', emoji: '🍅', price: 30, stock: 99, dailyLimit: 5, boughtToday: 1 },
-      { seedId: 2, name: '당근 씨앗', emoji: '🥕', price: 20, stock: 99, dailyLimit: 5, boughtToday: 0 },
-      { seedId: 3, name: '옥수수 씨앗', emoji: '🌽', price: 50, stock: 10, dailyLimit: 3, boughtToday: 3 },
-      { seedId: 4, name: '딸기 씨앗', emoji: '🍓', price: 80, stock: 0, dailyLimit: 2, boughtToday: 0 },
-    ];
+    // ✅ 서버 권위. coin·재고는 GET /api/shop/seeds 와 농장 조회로 채운다. (프론트 더미·직접차감 금지)
+    let coin = 0;
+    let seeds = [];
+
+    // 작물 코드 → 이모지 (표시용. 서버는 이모지를 안 내려주므로 프론트 매핑)
+    const EMOJI = { radish: '🥗', tomato: '🍅', corn: '🌽', pumpkin: '🎃', carrot: '🥕', strawberry: '🍓' };
+    function emojiOf(code) { return EMOJI[code] || '🌱'; }
 
     document.addEventListener('DOMContentLoaded', function () {
-      document.getElementById('coin').textContent = coin;
-      render();
+      loadShop();
     });
+
+    // 상점 목록 + 현재 코인 로드
+    async function loadShop() {
+      try {
+        // 코인은 농장 스냅샷에서
+        const farmRes = await fetch('/api/farm', { headers: { 'Accept': 'application/json' } });
+        const farmBody = await farmRes.json();
+        coin = (farmBody.data ?? farmBody).coin ?? 0;
+
+        // 진열 목록
+        const res = await fetch('/api/shop/seeds', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('상점을 불러오지 못했어요.');
+        const body = await res.json();
+        seeds = (body.data ?? body) || [];
+
+        render();
+      } catch (e) {
+        warn(e.message || '상점을 불러오지 못했어요.');
+      }
+    }
 
     function render() {
       document.getElementById('coin').textContent = coin;
@@ -52,16 +70,12 @@
       box.innerHTML = '';
 
       seeds.forEach(s => {
-        const remaining = s.dailyLimit - s.boughtToday;   // 오늘 남은 구매수
         const soldOut = s.stock <= 0;
-        const limitReached = remaining <= 0;
         const tooPoor = coin < s.price;
-        const disabled = soldOut || limitReached || tooPoor;
+        const disabled = soldOut || tooPoor;
 
-        // 버튼 라벨
         let btnLabel = `🪙 ${s.price}`;
         if (soldOut) btnLabel = '품절';
-        else if (limitReached) btnLabel = '오늘 마감';
         else if (tooPoor) btnLabel = '코인 부족';
 
         const card = document.createElement('div');
@@ -69,14 +83,12 @@
         card.innerHTML = `
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-3">
-                    <div style="font-size:36px;">${s.emoji}</div>
+                    <div style="font-size:36px;">${emojiOf(s.code)}</div>
                     <div class="flex-grow-1">
                         <div class="fw-bold fs-6 text-gray-800">${s.name}</div>
                         <div class="d-flex gap-2 mt-1">
                             <span class="badge badge-sm badge-light-secondary">재고 ${soldOut ? 0 : s.stock}</span>
-                            <span class="badge badge-sm ${remaining > 0 ? 'badge-light-primary' : 'badge-light-danger'}">
-                                오늘 ${remaining > 0 ? remaining + '개 남음' : '구매 마감'}
-                            </span>
+                            <span class="badge badge-sm badge-light-info">물 ${s.waters}회</span>
                         </div>
                     </div>
                     <button class="btn btn-sm ${disabled ? 'btn-light text-gray-400' : 'btn-primary'}"
@@ -91,28 +103,36 @@
       });
     }
 
-    function buySeed(seedId) {
+    async function buySeed(seedId) {
       const s = seeds.find(x => x.seedId === seedId);
       if (!s) return;
 
-      // 사전 체크 (실제 검증은 서버가 권위 — 콘솔 조작 무한구매 방지)
-      if (coin < s.price) return warn("코인이 부족해요!");
-      if (s.stock <= 0) return warn("품절된 씨앗이에요.");
-      if (s.dailyLimit - s.boughtToday <= 0) return warn("오늘 구매 한도에 도달했어요.");
+      // 사전 안내(UX용). 실제 검증·차감은 전부 서버가 함 — 콘솔 조작으로 우회 불가.
+      if (coin < s.price) return warn('코인이 부족해요!');
+      if (s.stock <= 0) return warn('품절된 씨앗이에요.');
 
-      // 🚧 POST /api/farm/shop/seeds/{id}/buy
-      //    서버가 코인 차감·재고·하루한도 검증 후 인벤토리 적립.
-      //    응답으로 갱신된 coin/stock/boughtToday 받아서 반영하는 게 정석.
-      coin -= s.price;
-      s.stock--;
-      s.boughtToday++;
-      render();
+      try {
+        const res = await fetch('/api/shop/seeds/buy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ seedId, qty: 1 })
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || body.result === false) {
+          throw new Error(body.message || '구매에 실패했어요.');
+        }
 
-      Swal.fire({
-        text: `${s.name}을(를) 구매했어요! 인벤토리에 담겼습니다.`,
-        icon: "success", buttonsStyling: false, confirmButtonText: "확인",
-        customClass: { confirmButton: "btn btn-primary" }
-      });
+        // 서버 최신 상태로 다시 로드 (직접 차감 안 함)
+        await loadShop();
+
+        Swal.fire({
+          text: `${s.name}을(를) 구매했어요! 인벤토리에 담겼습니다.`,
+          icon: 'success', buttonsStyling: false, confirmButtonText: '확인',
+          customClass: { confirmButton: 'btn btn-primary' }
+        });
+      } catch (e) {
+        warn(e.message);
+      }
     }
 
     function warn(msg) {

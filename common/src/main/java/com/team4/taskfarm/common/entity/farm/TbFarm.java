@@ -56,4 +56,22 @@ public class TbFarm extends BaseEntity {
         }
         drops -= amount;
     }
+    
+    /** 코인 차감(상점 구매). 부족하면 예외. */
+    public void spendCoin(int amount) {
+        if (amount <= 0) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("구매 수량이 올바르지 않습니다.");
+        }
+        if (coin < amount) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("코인이 부족합니다.");
+        }
+        coin -= amount;
+    }
+
+    /** 코인 적립(주민 판매 등) — 다음 작업에서 사용 예정 */
+    public void earnCoin(int amount) {
+        if (amount > 0) coin += amount;
+    }
 }

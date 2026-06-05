@@ -45,4 +45,27 @@ public class TbCoinLedger {
     private LocalDateTime createDate;
 
     public enum LedgerType { EARN, SPEND }
+    
+    
+    /** 코인 지출 내역 생성 (상점 구매 등) */
+    public static TbCoinLedger spend(Long idxFarm, int amount, String reason, Long refIdx) {
+        TbCoinLedger l = new TbCoinLedger();
+        l.idxFarm = idxFarm;
+        l.type = LedgerType.SPEND;
+        l.amount = amount;
+        l.reason = reason;
+        l.refIdx = refIdx;   // 구매한 씨앗 Idx 등 참조
+        return l;
+    }
+
+    /** 코인 적립 내역 생성 (주민 판매 등) — 다음 작업에서 사용 */
+    public static TbCoinLedger earn(Long idxFarm, int amount, String reason, Long refIdx) {
+        TbCoinLedger l = new TbCoinLedger();
+        l.idxFarm = idxFarm;
+        l.type = LedgerType.EARN;
+        l.amount = amount;
+        l.reason = reason;
+        l.refIdx = refIdx;
+        return l;
+    }
 }

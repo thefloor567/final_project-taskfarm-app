@@ -9,4 +9,7 @@ public interface TbSeedRepository extends JpaRepository<TbSeed, Long> {
 
     /** 작물 렌더 시 씨앗 이름을 한 번에 가져오기 (N+1 방지) */
     List<TbSeed> findByIdxSeedIn(List<Long> idxSeeds);
+    
+    /** 상점 진열용 — 판매중인 씨앗만 (Idx 순) */
+    List<TbSeed> findByIsActiveTrueOrderByIdxSeedAsc();
 }
