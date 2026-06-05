@@ -33,4 +33,13 @@ public class TbPlot {
     @CreatedDate
     @Column(name = "CreateDate", updatable = false)
     private LocalDateTime createDate;
+    
+    
+    /** 농장 밭 슬롯 생성 */
+    public static TbPlot create(Long idxFarm, int slot) {
+        TbPlot p = new TbPlot();
+        p.idxFarm = idxFarm;
+        p.slot = slot;
+        return p;
+    }
 }

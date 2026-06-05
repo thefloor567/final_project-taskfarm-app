@@ -36,4 +36,19 @@ public class TbCropInv {
     @LastModifiedDate
     @Column(name = "UpdateDate")
     private LocalDateTime updateDate;
+    
+    
+    /** 신규 작물 인벤토리 생성 */
+    public static TbCropInv create(Long idxFarm, Long idxSeed, int qty) {
+        TbCropInv inv = new TbCropInv();
+        inv.idxFarm = idxFarm;
+        inv.idxSeed = idxSeed;
+        inv.qty = qty;
+        return inv;
+    }
+
+    /** 수확량 적립 */
+    public void add(int amount) {
+        this.qty += amount;
+    }
 }

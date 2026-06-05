@@ -36,4 +36,24 @@ public class TbFarm extends BaseEntity {
     private int scarecrowLeft = 0;
 
     // ✏️ TODO: addDrops/spendCoin 등
+    
+    /** 신규 유저 기본 농장 생성 */
+    public static TbFarm createDefault(Long idxUser) {
+        TbFarm f = new TbFarm();
+        f.idxUser = idxUser;
+        f.name = "내 농장";
+        f.drops = 0;
+        f.coin = 0;
+        f.scarecrowLeft = 0;
+        return f;
+    }
+    
+    /** 물방울 차감(물주기). 부족하면 예외. */
+    public void spendDrops(int amount) {
+        if (drops < amount) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("물방울이 부족합니다.");
+        }
+        drops -= amount;
+    }
 }

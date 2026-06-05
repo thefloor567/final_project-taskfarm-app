@@ -46,4 +46,37 @@ public class TbCrop {
     public enum State { growing, ready, withered }
 
     // ✏️ TODO: water(), harvest()
+    
+    /** 씨앗 심기: 밭에 새 작물 생성 (growing 시작) */
+    public static TbCrop plant(Long idxPlot, Long idxSeed, int waters) {
+        TbCrop c = new TbCrop();
+        c.idxPlot = idxPlot;
+        c.idxSeed = idxSeed;
+        c.state = State.growing;
+        c.watered = 0;
+        c.total = waters;        // 씨앗이 요구하는 물주기 횟수
+        c.plantDate = java.time.LocalDateTime.now();
+        return c;
+    }
+
+    /** 물주기 1회. 다 채우면 ready로 전환. 이미 다 줬으면 예외. */
+    public void water() {
+        if (state != State.growing) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("물을 줄 수 있는 상태가 아닙니다.");
+        }
+        watered++;
+        if (watered >= total) {
+            state = State.ready;
+        }
+    }
+
+    /** 수확: ready 상태에서만. 수확일 기록. */
+    public void harvest() {
+        if (state != State.ready) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("아직 수확할 수 없습니다.");
+        }
+        harvestDate = java.time.LocalDateTime.now();
+    }
 }
