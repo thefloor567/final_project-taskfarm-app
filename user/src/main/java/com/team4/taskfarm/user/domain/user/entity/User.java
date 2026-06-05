@@ -2,6 +2,8 @@ package com.team4.taskfarm.user.domain.user.entity;
 
 import java.time.LocalDateTime;
 
+import com.team4.taskfarm.common.entity.BaseEntity;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,7 +19,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Entity
 @Table(name = "tbUser")
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -50,20 +52,17 @@ public class User {
     @Column(name = "Status", nullable = false)
     private Status status = Status.ACTIVE;
 
-    @Column(name = "CreateDate", nullable = false)
-    private LocalDateTime createDate;
-
-    @Column(name = "UpdateDate", nullable = false)
-    private LocalDateTime updateDate;
-
     @Column(name = "DeleteDate")
     private LocalDateTime deleteDate;
 
-    // ENUM 정의
-    public enum Role { ROLE_USER, ROLE_ADMIN }
-    public enum Status { ACTIVE, SUSPENDED }
+    public enum Role {
+        ROLE_USER, ROLE_ADMIN
+    }
 
-    // 생성 메서드 (회원가입용)
+    public enum Status {
+        ACTIVE, SUSPENDED
+    }
+
     public static User create(String email, String encodedPass, String nickname) {
         User user = new User();
         user.email = email;
@@ -74,24 +73,17 @@ public class User {
         user.exp = 0;
         user.level = 1;
         user.streak = 0;
-        user.createDate = LocalDateTime.now();
-        user.updateDate = LocalDateTime.now();
         return user;
     }
 
-    // 프로필 수정
     public void updateNickname(String nickname) {
         this.nickname = nickname;
-        this.updateDate = LocalDateTime.now();
     }
 
-    // 비밀번호 변경
     public void updatePass(String encodedPass) {
         this.pass = encodedPass;
-        this.updateDate = LocalDateTime.now();
     }
 
-    // 소프트 삭제 (탈퇴)
     public void withdraw() {
         this.deleteDate = LocalDateTime.now();
         this.status = Status.SUSPENDED;
