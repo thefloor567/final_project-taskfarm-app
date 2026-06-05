@@ -11,16 +11,22 @@ import java.util.List;
 public interface StatsTodoRepository extends JpaRepository<TbTodo, Long> {
 
     @Query("select count(t) from TbTodo t where t.idxUser = :idxUser and t.deleteDate is null")
-    long countByIdxUserAndDeleteDateIsNull(@Param("idxUser") Long idxUser);
+    long countTodos(@Param("idxUser") Long idxUser);
 
     @Query("select count(t) from TbTodo t where t.idxUser = :idxUser and t.isDone = true and t.deleteDate is null")
-    long countByIdxUserAndIsDoneTrueAndDeleteDateIsNull(@Param("idxUser") Long idxUser);
+    long countCompletedTodos(@Param("idxUser") Long idxUser);
 
-    @Query("select count(t) from TbTodo t where t.idxUser = :idxUser and t.idxCat = :idxCat and t.deleteDate is null")
-    long countByIdxUserAndIdxCatAndDeleteDateIsNull(@Param("idxUser") Long idxUser, @Param("idxCat") Long idxCat);
-
-    @Query("select count(t) from TbTodo t where t.idxUser = :idxUser and t.idxCat = :idxCat and t.isDone = true and t.deleteDate is null")
-    long countByIdxUserAndIdxCatAndIsDoneTrueAndDeleteDateIsNull(@Param("idxUser") Long idxUser, @Param("idxCat") Long idxCat);
+    @Query("""
+            select t.idxCat as idxCat,
+                   count(t) as totalCount,
+                   sum(case when t.isDone = true then 1 else 0 end) as doneCount
+            from TbTodo t
+            where t.idxUser = :idxUser
+              and t.idxCat is not null
+              and t.deleteDate is null
+            group by t.idxCat
+            """)
+    List<CategoryCompletionStat> findCategoryCompletionStats(@Param("idxUser") Long idxUser);
 
     @Query("""
             select t
@@ -30,8 +36,16 @@ public interface StatsTodoRepository extends JpaRepository<TbTodo, Long> {
               and t.completeDate between :startDateTime and :endDateTime
               and t.deleteDate is null
             """)
-    List<TbTodo> findByIdxUserAndIsDoneTrueAndCompleteDateBetweenAndDeleteDateIsNull(
+    List<TbTodo> findCompletedBetween(
             @Param("idxUser") Long idxUser,
             @Param("startDateTime") LocalDateTime startDateTime,
             @Param("endDateTime") LocalDateTime endDateTime);
+
+    interface CategoryCompletionStat {
+        Long getIdxCat();
+
+        Long getTotalCount();
+
+        Long getDoneCount();
+    }
 }

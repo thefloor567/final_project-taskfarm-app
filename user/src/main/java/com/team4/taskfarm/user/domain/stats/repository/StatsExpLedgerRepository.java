@@ -18,7 +18,7 @@ public interface StatsExpLedgerRepository extends JpaRepository<TbExpLedger, Lon
               and e.createDate between :startDateTime and :endDateTime
             order by e.createDate asc
             """)
-    List<TbExpLedger> findByIdxUserAndTypeAndCreateDateBetweenOrderByCreateDateAsc(
+    List<TbExpLedger> findEarnedExpBetween(
             @Param("idxUser") Long idxUser,
             @Param("type") TbExpLedger.LedgerType type,
             @Param("startDateTime") LocalDateTime startDateTime,

@@ -11,6 +11,7 @@ import com.team4.taskfarm.user.domain.stats.dto.StatsSummaryResponse;
 import com.team4.taskfarm.user.domain.stats.dto.WeeklyTodoStatsResponse;
 import com.team4.taskfarm.user.domain.stats.repository.StatsCategoryRepository;
 import com.team4.taskfarm.user.domain.stats.repository.StatsExpLedgerRepository;
+import com.team4.taskfarm.user.domain.stats.repository.StatsTodoRepository.CategoryCompletionStat;
 import com.team4.taskfarm.user.domain.stats.repository.StatsTodoRepository;
 import com.team4.taskfarm.user.domain.stats.repository.StatsUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,8 +51,8 @@ public class StatsService {
     }
 
     private StatsSummaryResponse getSummary(Long idxUser) {
-        long totalTodo = statsTodoRepository.countByIdxUserAndDeleteDateIsNull(idxUser);
-        long totalDone = statsTodoRepository.countByIdxUserAndIsDoneTrueAndDeleteDateIsNull(idxUser);
+        long totalTodo = statsTodoRepository.countTodos(idxUser);
+        long totalDone = statsTodoRepository.countCompletedTodos(idxUser);
         TbUser user = statsUserRepository.findByIdxUserAndDeleteDateIsNull(idxUser).orElse(null);
 
         return StatsSummaryResponse.of(
@@ -63,11 +65,17 @@ public class StatsService {
 
     private List<CategoryCompletionResponse> getCategoryCompletions(Long idxUser) {
         List<TbCategory> categories = statsCategoryRepository.findByIdxUserAndDeleteDateIsNullOrderByCreateDateAsc(idxUser);
+        Map<Long, CategoryCompletionStat> statsByCategory = new HashMap<>();
+        for (CategoryCompletionStat stat : statsTodoRepository.findCategoryCompletionStats(idxUser)) {
+            statsByCategory.put(stat.getIdxCat(), stat);
+        }
+
         List<CategoryCompletionResponse> responses = new ArrayList<>();
 
         for (TbCategory category : categories) {
-            long totalCount = statsTodoRepository.countByIdxUserAndIdxCatAndDeleteDateIsNull(idxUser, category.getIdxCat());
-            long doneCount = statsTodoRepository.countByIdxUserAndIdxCatAndIsDoneTrueAndDeleteDateIsNull(idxUser, category.getIdxCat());
+            CategoryCompletionStat stat = statsByCategory.get(category.getIdxCat());
+            long totalCount = stat == null || stat.getTotalCount() == null ? 0 : stat.getTotalCount();
+            long doneCount = stat == null || stat.getDoneCount() == null ? 0 : stat.getDoneCount();
 
             responses.add(CategoryCompletionResponse.from(category, doneCount, totalCount, toRate(doneCount, totalCount)));
         }
@@ -84,7 +92,7 @@ public class StatsService {
             doneCountByDate.put(startDate.plusDays(i), 0L);
         }
 
-        List<TbTodo> completedTodos = statsTodoRepository.findByIdxUserAndIsDoneTrueAndCompleteDateBetweenAndDeleteDateIsNull(
+        List<TbTodo> completedTodos = statsTodoRepository.findCompletedBetween(
                 idxUser, startDate.atStartOfDay(), LocalDateTime.of(endDate, LocalTime.MAX));
 
         for (TbTodo todo : completedTodos) {
@@ -105,7 +113,7 @@ public class StatsService {
         LocalDate endDate = LocalDate.now();
         int[] weeklyAmounts = new int[5];
 
-        List<TbExpLedger> ledgers = statsExpLedgerRepository.findByIdxUserAndTypeAndCreateDateBetweenOrderByCreateDateAsc(
+        List<TbExpLedger> ledgers = statsExpLedgerRepository.findEarnedExpBetween(
                 idxUser,
                 TbExpLedger.LedgerType.EARN,
                 startWeek.atStartOfDay(),
