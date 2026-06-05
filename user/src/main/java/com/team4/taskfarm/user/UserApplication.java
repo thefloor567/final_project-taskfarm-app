@@ -15,7 +15,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * @EnableJpaRepositories: Repository도 마찬가지로 범위 지정
  */
 @SpringBootApplication(scanBasePackages = "com.team4.taskfarm")
-@EntityScan(basePackages = "com.team4.taskfarm.common.entity")
+@EntityScan(basePackages = {
+	    "com.team4.taskfarm.common.entity",   // 기존 공통 엔티티
+	    "com.team4.taskfarm.user.domain"      // ← 우리 도메인 엔티티 추가
+	})
 @EnableJpaRepositories(basePackages = "com.team4.taskfarm")
 @EnableJpaAuditing
 public class UserApplication {
