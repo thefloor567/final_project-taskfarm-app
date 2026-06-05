@@ -59,16 +59,49 @@ public class TbCrop {
         return c;
     }
 
-    /** 물주기 1회. 다 채우면 ready로 전환. 이미 다 줬으면 예외. */
+    /** 물주기 1회. plantDate 갱신(시듦 타이머 리셋). 다 채우면 ready. */
     public void water() {
         if (state != State.growing) {
             throw com.team4.taskfarm.common.exception.CustomException
                     .badRequest("물을 줄 수 있는 상태가 아닙니다.");
         }
         watered++;
+        plantDate = java.time.LocalDateTime.now();   // ← 시듦 타이머 리셋
         if (watered >= total) {
             state = State.ready;
         }
+    }
+    
+    /** 비료 등으로 물주기를 여러 칸 즉시 채움. plantDate도 갱신. */
+    public void boostWater(int amount) {
+        if (state != State.growing) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("성장 중인 작물만 가능합니다.");
+        }
+        watered = Math.min(watered + amount, total);
+        plantDate = java.time.LocalDateTime.now();
+        if (watered >= total) {
+            state = State.ready;
+        }
+    }
+    
+    /**
+     * 시듦 판정 (lazy). growing 상태에서 기준 시간(분) 초과 시 시들 차례.
+     * @return true = "시들 때가 됨"(호출측에서 허수아비 방어/시듦 처리 결정)
+     */
+    public boolean isWitherDue(long witherMinutes) {
+        if (state != State.growing) return false;
+        return plantDate.plusMinutes(witherMinutes).isBefore(java.time.LocalDateTime.now());
+    }
+    
+    /** 실제로 시들게 만듦 */
+    public void wither() {
+        this.state = State.withered;
+    }
+    
+    /** 허수아비가 방어 → 시듦 타이머 리셋(시들지 않음) */
+    public void protectFromWither() {
+        this.plantDate = java.time.LocalDateTime.now();
     }
 
     /** 수확: ready 상태에서만. 수확일 기록. */

@@ -48,4 +48,17 @@ public class TbTool extends BaseEntity {
     public enum ToolType { scarecrow, fertilizer, greenhouse }
 
     // ✏️ TODO: 어드민 수정 메서드
+    
+    /** 구매 가능 여부 검증(판매중 + 재고) + 재고 1 차감. */
+    public void purchase() {
+        if (!isActive) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("현재 판매하지 않는 도구입니다.");
+        }
+        if (stock < 1) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("재고가 부족합니다.");
+        }
+        stock -= 1;
+    }
 }

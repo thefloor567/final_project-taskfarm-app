@@ -45,4 +45,9 @@ public class TbFarmEvent {
     private LocalDateTime createDate;
 
     // ✏️ TODO: dismiss()
+    
+    /** 당일 이벤트 무효화(온실 보호 등). IsDismissed = true */
+    public void dismiss() {
+        this.isDismissed = true;
+    }
 }

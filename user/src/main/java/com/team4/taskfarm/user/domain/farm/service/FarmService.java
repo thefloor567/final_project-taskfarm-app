@@ -26,6 +26,9 @@ public class FarmService {
 
     /** 신규 유저 농장 기본 밭 개수 */
     private static final int DEFAULT_PLOT_COUNT = 6;
+    
+    /** 시듦 판정 */
+    private final WitherChecker witherChecker;
 
     /**
      * 농장 전체 스냅샷 조회.
@@ -44,6 +47,10 @@ public class FarmService {
         Map<Long, TbCrop> cropByPlot = plotIds.isEmpty() ? Map.of()
                 : cropRepository.findByIdxPlotIn(plotIds).stream()
                     .collect(Collectors.toMap(TbCrop::getIdxPlot, c -> c, (a, b) -> a));
+        
+        // 2-1) 시듦 판정 (lazy). growing 중 기준시간 초과분 처리. 허수아비 있으면 방어.
+        witherChecker.applyWither(farm, new ArrayList<>(cropByPlot.values()));
+        // @Transactional 이라 변경은 자동 저장됨. 이후 PlotDto 매핑은 갱신된 state 를 그대로 사용.
 
         // 3) 작물 이름 표시용 씨앗 한 번에 → seedId 기준 맵 (N+1 방지)
         List<Long> seedIds = cropByPlot.values().stream().map(TbCrop::getIdxSeed).distinct().toList();
