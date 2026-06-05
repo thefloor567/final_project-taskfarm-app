@@ -11,14 +11,13 @@ spring:
   # ── DB (user앱과 같은 RDS 공유) ──
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:taskfarm}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:1234}
+    username: ${DB_USERNAME:taskfarm}
+    password: ${DB_PASSWORD:taskfarm1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
-      # ⚠️ 어드민은 보통 조회 위주. 스키마 생성은 user앱에 맡기고
-      #    어드민은 validate(있는 스키마 검증만)가 안전. 로컬은 일단 validate로.
+      # ⚠️ 어드민은 조회 위주. 스키마는 DDL로 직접 생성했으므로 validate(검증만).
       ddl-auto: ${JPA_DDL_AUTO:validate}
     properties:
       hibernate:

@@ -5,37 +5,32 @@ spring:
   application:
     name: taskfarm-user
 
-  # ── DB (환경변수 우선, 없으면 로컬 기본값) ──
+  # ── DB (admin앱과 같은 RDS 공유) ──
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:taskfarm}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:1234}
+    username: ${DB_USERNAME:taskfarm}
+    password: ${DB_PASSWORD:taskfarm1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
-      # 로컬 개발은 update, 운영(prod)은 validate 권장 → 환경변수로 덮어쓰기
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      # ⚠️ 스키마는 DDL로 직접 생성했으므로 validate(검증만). 로컬도 동일.
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
     show-sql: true
 
-  # 🚧 Redis는 아직 안 씀 → 자동설정 제외 (의존성 추가 전이라 사실상 무영향이지만
-  #    나중에 추가했을 때 연결 시도로 앱이 안 뜨는 걸 막기 위해 미리 명시)
-  #    Redis task 들어가면 이 줄 지우고 spring.data.redis.* 설정 추가.
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
-# ── JWT (운영에선 ESO로 주입된 환경변수 사용. 로컬은 기본값) ──
 jwt:
   secret: ${JWT_SECRET:local-dev-secret-please-change-this-to-long-random-string}
-  expiration: ${JWT_EXPIRATION:86400000}   # 24시간(ms)
+  expiration: ${JWT_EXPIRATION:86400000}
 
-# ── Actuator: K8s probe용 health만 노출 ──
 management:
   endpoints:
     web:
