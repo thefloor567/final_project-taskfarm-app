@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:fragment="head(title)">
+  <meta charset="UTF-8">
+  <title th:text="${title} + ' | TaskFarm Admin'">TaskFarm Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700">
+  <link th:href="@{/plugins/global/plugins.bundle.css}" rel="stylesheet">
+  <link th:href="@{/css/style.bundle.css}" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+           어드민 레이아웃: 좌측 사이드바 + 넓은 콘텐츠 (PC 대시보드)
+           - 유저앱(모바일/하단네비)과 완전히 다른 구조.
+           ============================================================ */
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background-color: #f5f8fa;
+    }
+
+    .admin-wrap {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* 좌측 사이드바 */
+    .admin-sidebar {
+      width: 250px;
+      flex-shrink: 0;
+      background: #1e1e2d;
+      /* 어드민 다크 사이드바 (Metronic 톤) */
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    /* 우측 콘텐츠 */
+    .admin-content {
+      flex: 1 1 auto;
+      min-width: 0;
+      /* 표 넘침 방지 */
+      padding: 24px 32px;
+    }
+
+    /* 사이드바 메뉴 */
+    .admin-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 24px;
+      color: #9899ac;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all .15s;
+    }
+
+    .admin-menu-item:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, .05);
+    }
+
+    .admin-menu-item.active {
+      color: #fff;
+      background: #2a2a3c;
+      border-left: 3px solid #3699FF;
+    }
+
+    /* 모바일에선 사이드바 접기 (관리자도 가끔 폰으로 볼 수 있으니) */
+    @media (max-width: 768px) {
+      .admin-sidebar {
+        width: 60px;
+      }
+
+      .admin-sidebar .menu-label,
+      .admin-sidebar .brand-text {
+        display: none;
+      }
+
+      .admin-content {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body></body>
+
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('유저 관리')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('users')}"></div>
+
+    <div class="admin-content">
+
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">유저 관리</h1>
+      <p class="text-gray-500 fs-6 mb-6">가입자 목록 및 활동 조회</p>
+
+      <div class="card shadow-sm">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title fs-5">전체 유저 <span class="text-gray-400 fs-6" id="totalCount">(0)</span></h3>
+          <div class="card-toolbar" style="width:280px;">
+            <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="닉네임·이메일 검색"
+              onkeyup="filterUsers()">
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-row-bordered align-middle gy-3">
+              <thead>
+                <tr class="fw-bold fs-7 text-gray-500 text-uppercase">
+                  <th>유저</th>
+                  <th class="text-center">레벨</th>
+                  <th class="text-center">완료한 할일</th>
+                  <th class="text-center">가입일</th>
+                  <th class="text-center">상세</th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody"></tbody>
+            </table>
+          </div>
+
+          <!-- 결과 없음 -->
+          <div id="emptyState" class="text-center py-10 d-none">
+            <span class="fs-6 text-gray-400">검색 결과가 없어요</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    // 🚧 더미. API(GET /api/admin/users) 나오면 교체.
+    const users = [
+      { userId: 1, nickname: '초록농부', email: 'green@taskfarm.com', level: 5, doneCount: 47, joinDate: '2025-05-12' },
+      { userId: 2, nickname: '부지런쟁이', email: 'busy@taskfarm.com', level: 8, doneCount: 92, joinDate: '2025-04-03' },
+      { userId: 3, nickname: '작심삼일', email: 'three@taskfarm.com', level: 2, doneCount: 11, joinDate: '2025-06-01' },
+      { userId: 4, nickname: '농사왕', email: 'king@taskfarm.com', level: 12, doneCount: 203, joinDate: '2025-02-20' },
+    ];
+
+    document.addEventListener('DOMContentLoaded', function () {
+      render(users);
+    });
+
+    function render(list) {
+      const tbody = document.getElementById('userTableBody');
+      const empty = document.getElementById('emptyState');
+      document.getElementById('totalCount').textContent = `(${list.length})`;
+      tbody.innerHTML = '';
+
+      if (list.length === 0) {
+        empty.classList.remove('d-none');
+        return;
+      }
+      empty.classList.add('d-none');
+
+      list.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded-circle bg-light-primary"
+                         style="width:40px;height:40px;font-size:18px;">🧑‍🌾</div>
+                    <div>
+                        <div class="fw-bold fs-6 text-gray-800">${u.nickname}</div>
+                        <div class="fs-8 text-gray-500">${u.email}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="text-center"><span class="badge badge-light-primary">Lv.${u.level}</span></td>
+            <td class="text-center fw-semibold">${u.doneCount}</td>
+            <td class="text-center fs-7 text-gray-600">${u.joinDate}</td>
+            <td class="text-center">
+                <a href="/admin/users/${u.userId}" class="btn btn-sm btn-light-primary">보기</a>
+            </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterUsers() {
+      const kw = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = users.filter(u =>
+        u.nickname.toLowerCase().includes(kw) || u.email.toLowerCase().includes(kw));
+      render(filtered);
+    }
+  </script>
+</body>
+
+</html>

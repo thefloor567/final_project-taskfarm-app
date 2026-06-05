@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('대시보드')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('dashboard')}"></div>
+
+    <div class="admin-content">
+
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">대시보드</h1>
+      <p class="text-gray-500 fs-6 mb-6">TaskFarm 서비스 현황 요약</p>
+
+      <!-- 요약 카드 4종 -->
+      <div class="row g-4 mb-6">
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">총 가입자</div>
+                  <div class="fw-bolder fs-2 text-gray-900 mt-1" id="totalUsers">0</div>
+                </div>
+                <span style="font-size:32px;">👥</span>
+              </div>
+              <div class="fs-8 text-success mt-2" id="newUsers">+0 오늘</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">전체 완료율</div>
+                  <div class="fw-bolder fs-2 text-gray-900 mt-1" id="completionRate">0%</div>
+                </div>
+                <span style="font-size:32px;">✅</span>
+              </div>
+              <div class="fs-8 text-gray-400 mt-2">할일 완료 기준</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">Gemini 호출</div>
+                  <div class="fw-bolder fs-2 text-gray-900 mt-1" id="geminiCalls">0</div>
+                </div>
+                <span style="font-size:32px;">✨</span>
+              </div>
+              <div class="fs-8 text-info mt-2" id="cacheRate">캐시 적중 0%</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">예상 비용</div>
+                  <div class="fw-bolder fs-2 text-gray-900 mt-1" id="geminiCost">$0</div>
+                </div>
+                <span style="font-size:32px;">💰</span>
+              </div>
+              <div class="fs-8 text-gray-400 mt-2">이번 달 Gemini</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 차트 영역 -->
+      <div class="row g-4">
+        <div class="col-xl-8">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">최근 7일 가입자 추이</h3>
+            </div>
+            <div class="card-body">
+              <div id="signupChart"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">Gemini 호출 vs 캐시</h3>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+              <div id="cacheChart"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    // 어드민 로그아웃 (사이드바에서 호출)
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    // 🚧 더미. API(GET /api/admin/home) 나오면 교체.
+    const data = {
+      totalUsers: 1284, newUsers: 23, completionRate: 71,
+      geminiCalls: 3420, cacheRate: 64, geminiCost: 12.40,
+      signup: { labels: ['월', '화', '수', '목', '금', '토', '일'], data: [12, 18, 15, 22, 30, 25, 23] },
+      cache: { hit: 64, miss: 36 }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('totalUsers').textContent = data.totalUsers.toLocaleString();
+      document.getElementById('newUsers').textContent = '+' + data.newUsers + ' 오늘';
+      document.getElementById('completionRate').textContent = data.completionRate + '%';
+      document.getElementById('geminiCalls').textContent = data.geminiCalls.toLocaleString();
+      document.getElementById('cacheRate').textContent = '캐시 적중 ' + data.cacheRate + '%';
+      document.getElementById('geminiCost').textContent = '$' + data.geminiCost.toFixed(2);
+      renderCharts();
+    });
+
+    function renderCharts() {
+      if (typeof ApexCharts === 'undefined') { console.warn('ApexCharts 없음'); return; }
+
+      new ApexCharts(document.getElementById('signupChart'), {
+        series: [{ name: '가입자', data: data.signup.data }],
+        chart: { type: 'area', height: 300, toolbar: { show: false } },
+        colors: ['#3699FF'],
+        stroke: { curve: 'smooth', width: 3 },
+        fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.1 } },
+        xaxis: { categories: data.signup.labels },
+        dataLabels: { enabled: false }
+      }).render();
+
+      new ApexCharts(document.getElementById('cacheChart'), {
+        series: [data.cache.hit, data.cache.miss],
+        chart: { type: 'donut', height: 260 },
+        labels: ['캐시 적중', '신규 호출'],
+        colors: ['#0BB783', '#FFA800'],
+        legend: { position: 'bottom' }
+      }).render();
+    }
+  </script>
+</body>
+
+</html>

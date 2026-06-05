@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('로그인')}"></head>
+<body>
+<div class="app-shell justify-content-center">
+    <div class="d-flex flex-column justify-content-center align-items-center flex-grow-1 p-4">
+
+        <div class="w-100" style="max-width: 380px;">
+
+            <!-- 로고/타이틀 -->
+            <div class="text-center mb-8">
+                <div style="font-size: 56px;">🌾</div>
+                <h1 class="fw-bolder fs-2x text-gray-900 mt-3">TaskFarm</h1>
+                <p class="text-gray-500 fs-6 mt-2">할일을 끝내고 농장을 키워보세요</p>
+            </div>
+
+            <!-- 로그인 카드 -->
+            <div class="card shadow-sm">
+                <div class="card-body p-4 d-flex flex-column gap-3">
+
+                    <div>
+                        <label class="form-label fw-semibold text-gray-700">이메일</label>
+                        <input type="email" id="email" class="form-control form-control-lg"
+                               placeholder="email@example.com" autocomplete="username">
+                    </div>
+
+                    <div>
+                        <label class="form-label fw-semibold text-gray-700">비밀번호</label>
+                        <input type="password" id="password" class="form-control form-control-lg"
+                               placeholder="비밀번호" autocomplete="current-password"
+                               onkeyup="if(event.key==='Enter') handleLogin()">
+                    </div>
+
+                    <button type="button" class="btn btn-primary btn-lg w-100 mt-2"
+                            onclick="handleLogin()">로그인</button>
+
+                    <div class="text-center mt-2">
+                        <span class="text-gray-500 fs-7">아직 회원이 아니신가요?</span>
+                        <a href="/signup" class="fw-semibold fs-7 ms-1">회원가입</a>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+<script th:src="@{/js/scripts.bundle.js}"></script>
+<script>
+function handleLogin() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+        Swal.fire({
+            text: "이메일과 비밀번호를 입력해주세요.",
+            icon: "warning", buttonsStyling: false,
+            confirmButtonText: "확인",
+            customClass: { confirmButton: "btn btn-primary" }
+        });
+        return;
+    }
+
+    fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.result) {
+            // 토큰을 쿠키에 저장 (JwtFilter가 쿠키 'token'을 읽음)
+            // ⚠️ 백엔드에서 HttpOnly 쿠키로 내려주는 게 더 안전.
+            //    인증 task 때 백엔드 응답 방식에 맞춰 조정할 것.
+            if (res.data && res.data.token) {
+                document.cookie = `token=${res.data.token}; path=/; max-age=86400`;
+            }
+            location.href = '/home';
+        } else {
+            Swal.fire({
+                text: res.message || "로그인에 실패했습니다.",
+                icon: "error", buttonsStyling: false,
+                confirmButtonText: "확인",
+                customClass: { confirmButton: "btn btn-danger" }
+            });
+        }
+    })
+    .catch(err => console.error(err));
+}
+</script>
+</body>
+</html>

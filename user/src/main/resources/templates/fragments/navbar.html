@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head></head>
+<body>
+
+    <!-- ============================================================
+         하단 네비게이션
+         - Foldy: max-width:480px 하드코딩 → PC에서 좁게 갇힘.
+         - 변경: app-shell(900px) 안에 자연스럽게 들어가도록
+           position:sticky + 부모 기준 배치. 별도 px 계산 불필요.
+         ============================================================ -->
+    <th:block th:fragment="navbar-main(active)">
+        <div class="bg-white border-top"
+             style="position: sticky; bottom: 0; z-index: 100;">
+            <div class="d-flex flex-row justify-content-around align-items-center w-100 py-2">
+
+                <a href="/home"
+                   class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
+                    <i class="ki-duotone ki-home fs-2x"
+                       th:classappend="${active == 'home'} ? 'text-primary' : 'text-gray-400'">
+                        <span class="path1"></span>
+                        <span class="path2"></span>
+                    </i>
+                    <span class="fs-9"
+                          th:classappend="${active == 'home'} ? 'text-primary fw-semibold' : 'text-gray-400'">홈</span>
+                </a>
+
+                <a href="/todo/list"
+                   class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
+                    <i class="ki-duotone ki-check-square fs-2x"
+                       th:classappend="${active == 'todo'} ? 'text-primary' : 'text-gray-400'">
+                        <span class="path1"></span>
+                        <span class="path2"></span>
+                    </i>
+                    <span class="fs-9"
+                          th:classappend="${active == 'todo'} ? 'text-primary fw-semibold' : 'text-gray-400'">할일</span>
+                </a>
+
+                <a href="/farm"
+                   class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
+                    <i class="ki-duotone ki-tree fs-2x"
+                       th:classappend="${active == 'farm'} ? 'text-primary' : 'text-gray-400'">
+                        <span class="path1"></span>
+                        <span class="path2"></span>
+                        <span class="path3"></span>
+                    </i>
+                    <span class="fs-9"
+                          th:classappend="${active == 'farm'} ? 'text-primary fw-semibold' : 'text-gray-400'">농장</span>
+                </a>
+
+                <a href="/stats"
+                   class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
+                    <i class="ki-duotone ki-chart fs-2x"
+                       th:classappend="${active == 'stats'} ? 'text-primary' : 'text-gray-400'">
+                        <span class="path1"></span>
+                        <span class="path2"></span>
+                    </i>
+                    <span class="fs-9"
+                          th:classappend="${active == 'stats'} ? 'text-primary fw-semibold' : 'text-gray-400'">통계</span>
+                </a>
+
+                <a href="/mypage"
+                   class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
+                    <i class="ki-duotone ki-user fs-2x"
+                       th:classappend="${active == 'mypage'} ? 'text-primary' : 'text-gray-400'">
+                        <span class="path1"></span>
+                        <span class="path2"></span>
+                    </i>
+                    <span class="fs-9"
+                          th:classappend="${active == 'mypage'} ? 'text-primary fw-semibold' : 'text-gray-400'">마이</span>
+                </a>
+
+            </div>
+        </div>
+    </th:block>
+
+    <!-- ============================================================
+         플러스(FAB) 버튼
+         - Foldy: right를 480px 기준 calc로 계산 → PC에서 엉뚱한 위치.
+         - 변경: app-shell 안에 absolute로 띄워서 항상 앱 우하단에 붙음.
+           (각 페이지에서 .app-shell 안, 콘텐츠 영역 안에 넣어 쓸 것)
+         - 인자로 클릭 시 이동 경로(href)를 받음. 없으면 fabBtn id만.
+         ============================================================ -->
+    <th:block th:fragment="btn-add(href)">
+        <button type="button" id="fabBtn"
+                th:onclick="${href} != null ? 'location.href=\'' + ${href} + '\'' : null"
+                class="btn btn-primary btn-icon rounded-circle shadow-lg"
+                style="position: absolute; bottom: 80px; right: 20px;
+                       width: 52px; height: 52px; z-index: 99;">
+            <i class="ki-duotone ki-plus fs-2x">
+                <span class="path1"></span>
+            </i>
+        </button>
+    </th:block>
+
+</body>
+</html>

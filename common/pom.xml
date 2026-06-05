@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- 부모 물기 -->
+    <parent>
+        <groupId>com.team4.taskfarm</groupId>
+        <artifactId>taskfarm-app</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <!-- ─────────────────────────────────────────────
+         common ("공용 창고")
+         - user/admin이 둘 다 갖다 쓰는 공통 코드 모음.
+         - 실행 가능한 앱이 아님 → main() 없음, 그냥 라이브러리(jar).
+         - ⚠️ spring-boot-maven-plugin 안 붙임! (실행 jar로 만들면
+            라이브러리로 못 가져다 씀. 일반 jar여야 user/admin이 의존 가능)
+    ───────────────────────────────────────────── -->
+    <artifactId>taskfarm-common</artifactId>
+    <name>taskfarm-common</name>
+    <description>공통 모듈 - 응답/예외/JWT/BaseController</description>
+
+    <dependencies>
+        <!-- Web: ResponseEntity, 필터, 컨트롤러 등 공통 웹 타입 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Security: SecurityContext, 필터 체인 등 (공통 인증 컴포넌트용) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- JPA: BaseEntity의 @MappedSuperclass, Auditing 등 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Validation: @Valid 등 (GlobalExceptionHandler가 참조) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- JWT: 토큰 발급/검증 (Foldy에서 쓰던 auth0/java-jwt 유지) -->
+        <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>java-jwt</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+
+</project>

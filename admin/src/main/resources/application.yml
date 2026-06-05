@@ -1,0 +1,46 @@
+server:
+  port: 8081
+  servlet:
+    # ⭐ Ingress "/admin" 경로 라우팅과 정합 (강사 피드백). 절대 빼면 안 됨.
+    context-path: /admin
+
+spring:
+  application:
+    name: taskfarm-admin
+
+  # ── DB (user앱과 같은 RDS 공유) ──
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:taskfarm}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:1234}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      # ⚠️ 어드민은 보통 조회 위주. 스키마 생성은 user앱에 맡기고
+      #    어드민은 validate(있는 스키마 검증만)가 안전. 로컬은 일단 validate로.
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: true
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-secret-please-change-this-to-long-random-string}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('농장')}"></head>
+
+<body>
+  <div class="app-shell" style="position: relative;">
+
+    <div th:replace="~{fragments/header :: header-main}"></div>
+
+    <div id="scrollContainer">
+      <div class="p-4 d-flex flex-column gap-4">
+
+        <!-- 자원 바 (물방울/코인) -->
+        <div class="card shadow-sm">
+          <div class="card-body py-3">
+            <div class="d-flex justify-content-around align-items-center">
+              <div class="text-center">
+                <div style="font-size:24px;">💧</div>
+                <div class="fw-bold fs-5 text-gray-900" id="water">0</div>
+                <div class="fs-9 text-gray-500">물방울</div>
+              </div>
+              <div style="width:1px;height:40px;background:#eee;"></div>
+              <div class="text-center">
+                <div style="font-size:24px;">🪙</div>
+                <div class="fw-bold fs-5 text-gray-900" id="coin">0</div>
+                <div class="fs-9 text-gray-500">코인</div>
+              </div>
+              <div style="width:1px;height:40px;background:#eee;"></div>
+              <div class="text-center">
+                <div style="font-size:24px;">🌾</div>
+                <div class="fw-bold fs-5 text-gray-900" id="cropCount">0</div>
+                <div class="fs-9 text-gray-500">작물</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 오늘의 이벤트 배너 -->
+        <div id="eventBanner" class="card shadow-sm border-0 d-none"
+          style="background: linear-gradient(135deg, #FFA800, #FF6B35);">
+          <div class="card-body py-3 d-flex justify-content-between align-items-center">
+            <div class="text-white">
+              <div class="fw-bold fs-6" id="eventTitle">🎉 오늘의 이벤트</div>
+              <div class="fs-8 opacity-75" id="eventDesc">설명</div>
+            </div>
+            <button class="btn btn-sm btn-light" onclick="dismissEvent()">확인</button>
+          </div>
+        </div>
+
+        <!-- 바로가기 (상점/인벤토리/주문) -->
+        <div class="row g-2">
+          <div class="col-3">
+            <div class="card shadow-sm h-100" style="cursor:pointer;" onclick="location.href='/farm/shop/seeds'">
+              <div class="card-body text-center py-3 px-1">
+                <div style="font-size:24px;">🌱</div>
+                <div class="fs-9 fw-semibold text-gray-700 mt-1">씨앗상점</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="card shadow-sm h-100" style="cursor:pointer;" onclick="location.href='/farm/shop/tools'">
+              <div class="card-body text-center py-3 px-1">
+                <div style="font-size:24px;">🛠️</div>
+                <div class="fs-9 fw-semibold text-gray-700 mt-1">도구상점</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="card shadow-sm h-100" style="cursor:pointer;" onclick="location.href='/farm/inventory'">
+              <div class="card-body text-center py-3 px-1">
+                <div style="font-size:24px;">🎒</div>
+                <div class="fs-9 fw-semibold text-gray-700 mt-1">인벤토리</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="card shadow-sm h-100" style="cursor:pointer;" onclick="location.href='/farm/orders'">
+              <div class="card-body text-center py-3 px-1">
+                <div style="font-size:24px;">📋</div>
+                <div class="fs-9 fw-semibold text-gray-700 mt-1">주민주문</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 밭 그리드 -->
+        <div>
+          <h3 class="fw-bold fs-5 text-gray-900 mb-2">🌻 내 밭</h3>
+          <div class="row g-3" id="plotGrid"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div th:replace="~{fragments/navbar :: navbar-main('farm')}"></div>
+
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    // 🚧 더미 농장 상태. API(/api/farm, /api/farm/plots) 나오면 교체.
+    let farm = { water: 12, coin: 240, cropCount: 5 };
+    let plots = [
+      { plotId: 1, status: 'ready', crop: '🍅', watered: 3, total: 3 },
+      { plotId: 2, status: 'growing', crop: '🌱', watered: 1, total: 3 },
+      { plotId: 3, status: 'growing', crop: '🌱', watered: 2, total: 3 },
+      { plotId: 4, status: 'empty', crop: null, watered: 0, total: 0 },
+      { plotId: 5, status: 'withered', crop: '🥀', watered: 0, total: 3 },
+      { plotId: 6, status: 'empty', crop: null, watered: 0, total: 0 },
+    ];
+    const event = { title: '🌟 풍년의 날', desc: '오늘 수확하면 작물 +1 보너스!' };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      renderResources();
+      renderPlots();
+      showEvent();
+    });
+
+    function renderResources() {
+      document.getElementById('water').textContent = farm.water;
+      document.getElementById('coin').textContent = farm.coin;
+      document.getElementById('cropCount').textContent = farm.cropCount;
+    }
+
+    function showEvent() {
+      if (!event) return;
+      document.getElementById('eventTitle').textContent = event.title;
+      document.getElementById('eventDesc').textContent = event.desc;
+      document.getElementById('eventBanner').classList.remove('d-none');
+    }
+    function dismissEvent() {
+      // 🚧 POST /api/farm/event/dismiss
+      document.getElementById('eventBanner').classList.add('d-none');
+    }
+
+    function renderPlots() {
+      const grid = document.getElementById('plotGrid');
+      grid.innerHTML = '';
+
+      plots.forEach(p => {
+        const col = document.createElement('div');
+        col.className = 'col-4';
+
+        let inner = '', bg = '#F5F8FA', action = '';
+        if (p.status === 'empty') {
+          inner = '<div style="font-size:32px;opacity:.3;">➕</div><div class="fs-9 text-gray-400">씨앗 심기</div>';
+          action = `plantSeed(${p.plotId})`;
+        } else if (p.status === 'growing') {
+          inner = `<div style="font-size:36px;">${p.crop}</div>
+                     <div class="fs-9 text-gray-500">💧 ${p.watered}/${p.total}</div>`;
+          bg = '#E8FFF3'; action = `waterPlot(${p.plotId})`;
+        } else if (p.status === 'ready') {
+          inner = `<div style="font-size:36px;">${p.crop}</div>
+                     <div class="fs-9 fw-bold text-success">수확 가능!</div>`;
+          bg = '#FFF8DD'; action = `harvestPlot(${p.plotId})`;
+        } else if (p.status === 'withered') {
+          inner = `<div style="font-size:36px;">${p.crop}</div>
+                     <div class="fs-9 text-danger">시듦</div>`;
+          bg = '#FFF5F8'; action = `removeCrop(${p.plotId})`;
+        }
+
+        col.innerHTML = `
+            <div class="card shadow-sm" style="cursor:pointer;background:${bg};"
+                 onclick="${action}">
+                <div class="card-body text-center py-4 px-1">${inner}</div>
+            </div>
+        `;
+        grid.appendChild(col);
+      });
+    }
+
+    // === 밭 상호작용 (더미) — API 나오면 각 fetch로 교체 ===
+    function plantSeed(plotId) {
+      // 🚧 POST /api/farm/plots/{id}/plant (보유 씨앗 1 소비)
+      const p = plots.find(x => x.plotId === plotId);
+      p.status = 'growing'; p.crop = '🌱'; p.watered = 0; p.total = 3;
+      renderPlots();
+    }
+    function waterPlot(plotId) {
+      // 🚧 POST /api/farm/plots/{id}/water (물방울 1 소비)
+      if (farm.water < 1) {
+        return Swal.fire({
+          text: "물방울이 부족해요!", icon: "warning",
+          buttonsStyling: false, confirmButtonText: "확인",
+          customClass: { confirmButton: "btn btn-primary" }
+        });
+      }
+      const p = plots.find(x => x.plotId === plotId);
+      p.watered++; farm.water--;
+      if (p.watered >= p.total) { p.status = 'ready'; p.crop = '🍅'; }
+      renderResources(); renderPlots();
+    }
+    function harvestPlot(plotId) {
+      // 🚧 POST /api/farm/plots/{id}/harvest (작물 인벤토리 적립)
+      const p = plots.find(x => x.plotId === plotId);
+      p.status = 'empty'; p.crop = null; p.watered = 0; p.total = 0;
+      farm.cropCount++;
+      Swal.fire({
+        text: "수확 완료! 🌾 작물 +1", icon: "success",
+        buttonsStyling: false, confirmButtonText: "확인",
+        customClass: { confirmButton: "btn btn-primary" }
+      });
+      renderResources(); renderPlots();
+    }
+    function removeCrop(plotId) {
+      // 🚧 DELETE /api/farm/plots/{id}/crop
+      const p = plots.find(x => x.plotId === plotId);
+      p.status = 'empty'; p.crop = null;
+      renderPlots();
+    }
+  </script>
+</body>
+
+</html>

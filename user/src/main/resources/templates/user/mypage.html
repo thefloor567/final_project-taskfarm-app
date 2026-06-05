@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('마이페이지')}"></head>
+
+<body>
+  <div class="app-shell">
+
+    <div th:replace="~{fragments/header :: header-main}"></div>
+
+    <div id="scrollContainer">
+      <div class="p-4 d-flex flex-column gap-4">
+
+        <!-- 프로필 -->
+        <div class="card shadow-sm">
+          <div class="card-body text-center py-5">
+            <div style="font-size:64px;">🧑‍🌾</div>
+            <h2 class="fw-bolder fs-3 text-gray-900 mt-3" id="nickname">농부</h2>
+            <p class="text-gray-500 fs-7 mb-0" id="email">email@example.com</p>
+            <div class="d-flex justify-content-center gap-4 mt-3">
+              <div class="text-center">
+                <div class="fw-bold fs-5 text-gray-900" id="level">Lv.1</div>
+                <div class="fs-9 text-gray-500">레벨</div>
+              </div>
+              <div class="text-center">
+                <div class="fw-bold fs-5 text-gray-900" id="joinDays">0일</div>
+                <div class="fs-9 text-gray-500">함께한 날</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 메뉴 -->
+        <div class="card shadow-sm">
+          <div class="card-body p-0">
+            <div class="menu-item d-flex justify-content-between align-items-center px-4 py-4 border-bottom"
+              style="cursor:pointer;" onclick="openEditProfile()">
+              <span class="fw-semibold fs-6 text-gray-800">✏️ 프로필 수정</span>
+              <i class="ki-duotone ki-arrow-right fs-3 text-gray-400"><span class="path1"></span><span
+                  class="path2"></span></i>
+            </div>
+            <div class="menu-item d-flex justify-content-between align-items-center px-4 py-4 border-bottom"
+              style="cursor:pointer;" onclick="openChangePassword()">
+              <span class="fw-semibold fs-6 text-gray-800">🔒 비밀번호 변경</span>
+              <i class="ki-duotone ki-arrow-right fs-3 text-gray-400"><span class="path1"></span><span
+                  class="path2"></span></i>
+            </div>
+            <div class="menu-item d-flex justify-content-between align-items-center px-4 py-4" style="cursor:pointer;"
+              onclick="handleLogout()">
+              <span class="fw-semibold fs-6 text-gray-800">🚪 로그아웃</span>
+              <i class="ki-duotone ki-arrow-right fs-3 text-gray-400"><span class="path1"></span><span
+                  class="path2"></span></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- 회원 탈퇴 -->
+        <button type="button" class="btn btn-light-danger w-100" onclick="handleWithdraw()">
+          회원 탈퇴
+        </button>
+
+      </div>
+    </div>
+
+    <div th:replace="~{fragments/navbar :: navbar-main('mypage')}"></div>
+
+  </div>
+
+  <!-- 프로필 수정 모달 -->
+  <div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">프로필 수정</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold text-gray-700">닉네임</label>
+          <input type="text" id="editNickname" class="form-control form-control-lg">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">취소</button>
+          <button type="button" class="btn btn-primary fw-bold" onclick="saveProfile()">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 비밀번호 변경 모달 -->
+  <div class="modal fade" id="passwordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">비밀번호 변경</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body d-flex flex-column gap-3">
+          <div>
+            <label class="form-label fw-semibold text-gray-700">현재 비밀번호</label>
+            <input type="password" id="currentPw" class="form-control form-control-lg">
+          </div>
+          <div>
+            <label class="form-label fw-semibold text-gray-700">새 비밀번호</label>
+            <input type="password" id="newPw" class="form-control form-control-lg" placeholder="8자 이상">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">취소</button>
+          <button type="button" class="btn btn-primary fw-bold" onclick="savePassword()">변경</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    let profileModal = null;
+    let passwordModal = null;
+
+    // 🚧 더미. API(GET /api/auth/me) 나오면 교체.
+    let profile = {
+      nickname: '초록농부',
+      email: 'farmer@taskfarm.com',
+      level: 5,
+      joinDays: 23
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      profileModal = new bootstrap.Modal(document.getElementById('profileModal'));
+      passwordModal = new bootstrap.Modal(document.getElementById('passwordModal'));
+      renderProfile();
+    });
+
+    function renderProfile() {
+      document.getElementById('nickname').textContent = profile.nickname;
+      document.getElementById('email').textContent = profile.email;
+      document.getElementById('level').textContent = 'Lv.' + profile.level;
+      document.getElementById('joinDays').textContent = profile.joinDays + '일';
+    }
+
+    // 프로필 수정
+    function openEditProfile() {
+      document.getElementById('editNickname').value = profile.nickname;
+      profileModal.show();
+    }
+    function saveProfile() {
+      const nickname = document.getElementById('editNickname').value.trim();
+      if (!nickname) return warn("닉네임을 입력해주세요.");
+
+      // 🚧 PATCH /api/auth/me {nickname}
+      profile.nickname = nickname;
+      profileModal.hide();
+      renderProfile();
+      ok("프로필이 수정되었습니다.");
+    }
+
+    // 비밀번호 변경
+    function openChangePassword() {
+      document.getElementById('currentPw').value = '';
+      document.getElementById('newPw').value = '';
+      passwordModal.show();
+    }
+    function savePassword() {
+      const currentPw = document.getElementById('currentPw').value;
+      const newPw = document.getElementById('newPw').value;
+      if (!currentPw || !newPw) return warn("모든 항목을 입력해주세요.");
+      if (newPw.length < 8) return warn("새 비밀번호는 8자 이상이어야 합니다.");
+
+      // 🚧 PATCH /api/auth/password {currentPassword, newPassword}
+      //    서버가 현재 비번 확인 후 변경. 틀리면 에러 메시지.
+      passwordModal.hide();
+      ok("비밀번호가 변경되었습니다.");
+    }
+
+    // 로그아웃
+    function handleLogout() {
+      Swal.fire({
+        text: "로그아웃 하시겠습니까?", icon: "question",
+        buttonsStyling: false, showCancelButton: true,
+        confirmButtonText: "로그아웃", cancelButtonText: "취소",
+        customClass: { confirmButton: "btn btn-primary", cancelButton: "btn btn-light" }
+      }).then(result => {
+        if (result.isConfirmed) {
+          // 🚧 POST /api/auth/logout (토큰 무효화)
+          document.cookie = 'token=; path=/; max-age=0';  // 쿠키 제거
+          location.href = '/';
+        }
+      });
+    }
+
+    // 회원 탈퇴
+    function handleWithdraw() {
+      Swal.fire({
+        text: "정말 탈퇴하시겠습니까? 모든 데이터(할일·농장)가 삭제됩니다.",
+        icon: "warning", buttonsStyling: false, showCancelButton: true,
+        confirmButtonText: "탈퇴", cancelButtonText: "취소",
+        customClass: { confirmButton: "btn btn-danger", cancelButton: "btn btn-light" }
+      }).then(result => {
+        if (result.isConfirmed) {
+          // 🚧 DELETE /api/auth/me
+          document.cookie = 'token=; path=/; max-age=0';
+          Swal.fire({
+            text: "탈퇴가 완료되었습니다.", icon: "success",
+            buttonsStyling: false, confirmButtonText: "확인",
+            customClass: { confirmButton: "btn btn-primary" }
+          }).then(() => location.href = '/');
+        }
+      });
+    }
+
+    function warn(msg) {
+      Swal.fire({
+        text: msg, icon: "warning", buttonsStyling: false,
+        confirmButtonText: "확인", customClass: { confirmButton: "btn btn-primary" }
+      });
+    }
+    function ok(msg) {
+      Swal.fire({
+        text: msg, icon: "success", buttonsStyling: false,
+        confirmButtonText: "확인", customClass: { confirmButton: "btn btn-primary" }
+      });
+    }
+  </script>
+</body>
+
+</html>

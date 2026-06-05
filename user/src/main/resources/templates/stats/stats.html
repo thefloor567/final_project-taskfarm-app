@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('통계')}"></head>
+
+<body>
+  <div class="app-shell">
+
+    <div th:replace="~{fragments/header :: header-main}"></div>
+
+    <div id="scrollContainer">
+      <div class="p-4 d-flex flex-column gap-4">
+
+        <h2 class="fw-bolder fs-3 text-gray-900 mb-0">📊 통계</h2>
+
+        <!-- 요약 카드 -->
+        <div class="row g-3">
+          <div class="col-4">
+            <div class="card shadow-sm h-100">
+              <div class="card-body text-center py-3">
+                <div class="fw-bolder fs-2 text-primary" id="totalDone">0</div>
+                <div class="fs-9 text-gray-500">완료한 할일</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="card shadow-sm h-100">
+              <div class="card-body text-center py-3">
+                <div class="fw-bolder fs-2 text-success" id="completionRate">0%</div>
+                <div class="fs-9 text-gray-500">완료율</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="card shadow-sm h-100">
+              <div class="card-body text-center py-3">
+                <div class="fw-bolder fs-2 text-warning" id="currentLevel">Lv.1</div>
+                <div class="fs-9 text-gray-500">현재 레벨</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 카테고리별 완료율 -->
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h3 class="card-title fs-6">🏷️ 카테고리별 완료율</h3>
+          </div>
+          <div class="card-body">
+            <div id="categoryChart"></div>
+          </div>
+        </div>
+
+        <!-- 기간별 완료 추이 -->
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h3 class="card-title fs-6">📅 최근 7일 완료 추이</h3>
+          </div>
+          <div class="card-body">
+            <div id="weeklyChart"></div>
+          </div>
+        </div>
+
+        <!-- XP 성장 추이 -->
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h3 class="card-title fs-6">⭐ 경험치 성장</h3>
+          </div>
+          <div class="card-body">
+            <div id="xpChart"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div th:replace="~{fragments/navbar :: navbar-main('stats')}"></div>
+
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    // 🚧 더미. API 나오면 교체:
+    //   GET /api/stats/todos  (할일 완료 통계)
+    //   GET /api/stats/growth (경험치/농장 성장)
+    const stats = {
+      totalDone: 47,
+      completionRate: 78,
+      currentLevel: 5,
+      categories: [
+        { name: '건강', rate: 85, color: '#1BC5BD' },
+        { name: '공부', rate: 72, color: '#3699FF' },
+        { name: '집안일', rate: 60, color: '#FFA800' },
+      ],
+      weekly: {
+        labels: ['월', '화', '수', '목', '금', '토', '일'],
+        data: [3, 5, 2, 6, 4, 7, 5]
+      },
+      xp: {
+        labels: ['1주', '2주', '3주', '4주', '5주'],
+        data: [120, 280, 450, 600, 820]
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      // 요약
+      document.getElementById('totalDone').textContent = stats.totalDone;
+      document.getElementById('completionRate').textContent = stats.completionRate + '%';
+      document.getElementById('currentLevel').textContent = 'Lv.' + stats.currentLevel;
+
+      renderCharts();
+    });
+
+    function renderCharts() {
+      // ApexCharts는 Metronic plugins.bundle.js에 포함됨
+      if (typeof ApexCharts === 'undefined') {
+        console.warn('ApexCharts 없음 — plugins.bundle.js 확인');
+        return;
+      }
+
+      // 1) 카테고리별 완료율 (가로 막대)
+      new ApexCharts(document.getElementById('categoryChart'), {
+        series: [{ name: '완료율', data: stats.categories.map(c => c.rate) }],
+        chart: { type: 'bar', height: 200, toolbar: { show: false } },
+        plotOptions: { bar: { horizontal: true, borderRadius: 6, distributed: true } },
+        colors: stats.categories.map(c => c.color),
+        xaxis: { categories: stats.categories.map(c => c.name), max: 100 },
+        dataLabels: { enabled: true, formatter: v => v + '%' },
+        legend: { show: false }
+      }).render();
+
+      // 2) 주간 완료 추이 (세로 막대)
+      new ApexCharts(document.getElementById('weeklyChart'), {
+        series: [{ name: '완료', data: stats.weekly.data }],
+        chart: { type: 'bar', height: 200, toolbar: { show: false } },
+        plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
+        colors: ['#3699FF'],
+        xaxis: { categories: stats.weekly.labels },
+        dataLabels: { enabled: false }
+      }).render();
+
+      // 3) XP 성장 (라인)
+      new ApexCharts(document.getElementById('xpChart'), {
+        series: [{ name: 'XP', data: stats.xp.data }],
+        chart: { type: 'area', height: 200, toolbar: { show: false } },
+        colors: ['#FFA800'],
+        stroke: { curve: 'smooth', width: 3 },
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 } },
+        xaxis: { categories: stats.xp.labels },
+        dataLabels: { enabled: false }
+      }).render();
+    }
+  </script>
+</body>
+
+</html>

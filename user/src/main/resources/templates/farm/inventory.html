@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('인벤토리')}"></head>
+
+<body>
+  <div class="app-shell">
+
+    <div th:replace="~{fragments/header :: header-back('인벤토리')}"></div>
+
+    <div id="scrollContainer">
+      <div class="p-4 d-flex flex-column gap-3">
+
+        <!-- 탭 -->
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-primary flex-fill tab-btn" data-tab="seeds"
+            onclick="selectTab(this)">🌱 보유 씨앗</button>
+          <button type="button" class="btn btn-sm btn-light flex-fill tab-btn" data-tab="crops"
+            onclick="selectTab(this)">🌾 수확 작물</button>
+        </div>
+
+        <!-- 비었을 때 -->
+        <div id="emptyState" class="d-flex flex-column align-items-center justify-content-center gap-3 py-20 d-none">
+          <span style="font-size:48px;" id="emptyIcon">📦</span>
+          <span class="fs-5 fw-semibold text-gray-500" id="emptyMsg">비어 있어요</span>
+        </div>
+
+        <!-- 그리드 -->
+        <div class="row g-3" id="itemGrid"></div>
+
+      </div>
+    </div>
+
+    <div th:replace="~{fragments/navbar :: navbar-main('farm')}"></div>
+
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    let currentTab = 'seeds';
+
+    // 🚧 더미. API 나오면 교체:
+    //   씨앗: GET /api/farm/inventory/seeds
+    //   작물: GET /api/farm/inventory/crops
+    const seedInventory = [
+      { seedId: 1, name: '토마토 씨앗', emoji: '🍅', count: 3 },
+      { seedId: 2, name: '당근 씨앗', emoji: '🥕', count: 5 },
+      { seedId: 3, name: '옥수수 씨앗', emoji: '🌽', count: 1 },
+    ];
+    const cropInventory = [
+      { cropId: 1, name: '토마토', emoji: '🍅', count: 8 },
+      { cropId: 2, name: '딸기', emoji: '🍓', count: 2 },
+    ];
+
+    document.addEventListener('DOMContentLoaded', function () {
+      render();
+    });
+
+    function selectTab(btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('btn-primary'); b.classList.add('btn-light');
+      });
+      btn.classList.remove('btn-light'); btn.classList.add('btn-primary');
+      currentTab = btn.dataset.tab;
+      render();
+    }
+
+    function render() {
+      const grid = document.getElementById('itemGrid');
+      const empty = document.getElementById('emptyState');
+      grid.innerHTML = '';
+
+      const list = currentTab === 'seeds' ? seedInventory : cropInventory;
+
+      if (list.length === 0) {
+        empty.classList.remove('d-none');
+        document.getElementById('emptyIcon').textContent = currentTab === 'seeds' ? '🌱' : '🌾';
+        document.getElementById('emptyMsg').textContent =
+          currentTab === 'seeds' ? '보유한 씨앗이 없어요' : '수확한 작물이 없어요';
+        return;
+      }
+      empty.classList.add('d-none');
+
+      list.forEach(item => {
+        const col = document.createElement('div');
+        col.className = 'col-4';
+
+        // 씨앗이면 "심으러 가기"(농장으로), 작물이면 "팔러 가기"(주문으로) 힌트
+        const actionHint = currentTab === 'seeds'
+          ? '<div class="fs-9 text-primary mt-1">밭에 심기</div>'
+          : '<div class="fs-9 text-warning mt-1">주문 이행</div>';
+        const goTo = currentTab === 'seeds' ? '/farm' : '/farm/orders';
+
+        col.innerHTML = `
+            <div class="card shadow-sm" style="cursor:pointer;" onclick="location.href='${goTo}'">
+                <div class="card-body text-center py-4 px-1 position-relative">
+                    <div style="font-size:36px;">${item.emoji}</div>
+                    <div class="fw-bold fs-7 text-gray-800 mt-1">${item.name}</div>
+                    ${actionHint}
+                    <span class="badge badge-circle badge-primary position-absolute"
+                          style="top:8px; right:8px;">${item.count}</span>
+                </div>
+            </div>
+        `;
+        grid.appendChild(col);
+      });
+    }
+  </script>
+</body>
+
+</html>

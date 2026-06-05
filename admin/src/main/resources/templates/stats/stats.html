@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('서비스 통계')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('stats')}"></div>
+
+    <div class="admin-content">
+
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">서비스 통계</h1>
+      <p class="text-gray-500 fs-6 mb-6">유저·할일 전체 지표</p>
+
+      <!-- 핵심 지표 -->
+      <div class="row g-4 mb-4">
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body text-center py-4">
+              <div class="fw-bolder fs-2 text-primary" id="totalUsers">0</div>
+              <div class="fs-8 text-gray-500">총 가입자</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body text-center py-4">
+              <div class="fw-bolder fs-2 text-success" id="activeUsers">0</div>
+              <div class="fs-8 text-gray-500">활성 유저(7일)</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body text-center py-4">
+              <div class="fw-bolder fs-2 text-warning" id="totalTodos">0</div>
+              <div class="fs-8 text-gray-500">전체 할일</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body text-center py-4">
+              <div class="fw-bolder fs-2 text-info" id="avgCompletion">0%</div>
+              <div class="fs-8 text-gray-500">평균 완료율</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 차트 2단 -->
+      <div class="row g-4 mb-4">
+        <div class="col-xl-8">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">월별 가입자 추이</h3>
+            </div>
+            <div class="card-body">
+              <div id="signupTrend"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">레벨 분포</h3>
+            </div>
+            <div class="card-body">
+              <div id="levelDist"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-xl-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">카테고리별 할일 분포</h3>
+            </div>
+            <div class="card-body">
+              <div id="categoryDist"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">요일별 완료 활동</h3>
+            </div>
+            <div class="card-body">
+              <div id="weekdayActivity"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    // 🚧 더미. API(GET /api/admin/stats) 나오면 교체.
+    const s = {
+      totalUsers: 1284, activeUsers: 642, totalTodos: 18403, avgCompletion: 71,
+      signupTrend: { labels: ['1월', '2월', '3월', '4월', '5월', '6월'], data: [80, 140, 210, 330, 480, 620] },
+      levelDist: { labels: ['Lv1-3', 'Lv4-6', 'Lv7-9', 'Lv10+'], data: [520, 410, 250, 104] },
+      categoryDist: { labels: ['건강', '공부', '집안일', '업무', '기타'], data: [3200, 4100, 2800, 5400, 2900] },
+      weekday: { labels: ['월', '화', '수', '목', '금', '토', '일'], data: [2400, 2800, 2600, 3100, 2900, 1800, 2200] }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('totalUsers').textContent = s.totalUsers.toLocaleString();
+      document.getElementById('activeUsers').textContent = s.activeUsers.toLocaleString();
+      document.getElementById('totalTodos').textContent = s.totalTodos.toLocaleString();
+      document.getElementById('avgCompletion').textContent = s.avgCompletion + '%';
+      renderCharts();
+    });
+
+    function renderCharts() {
+      if (typeof ApexCharts === 'undefined') { console.warn('ApexCharts 없음'); return; }
+
+      new ApexCharts(document.getElementById('signupTrend'), {
+        series: [{ name: '누적 가입자', data: s.signupTrend.data }],
+        chart: { type: 'area', height: 300, toolbar: { show: false } },
+        colors: ['#3699FF'], stroke: { curve: 'smooth', width: 3 },
+        fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.1 } },
+        xaxis: { categories: s.signupTrend.labels }, dataLabels: { enabled: false }
+      }).render();
+
+      new ApexCharts(document.getElementById('levelDist'), {
+        series: s.levelDist.data,
+        chart: { type: 'donut', height: 280 },
+        labels: s.levelDist.labels,
+        colors: ['#3699FF', '#0BB783', '#FFA800', '#F64E60'],
+        legend: { position: 'bottom' }
+      }).render();
+
+      new ApexCharts(document.getElementById('categoryDist'), {
+        series: [{ name: '할일 수', data: s.categoryDist.data }],
+        chart: { type: 'bar', height: 300, toolbar: { show: false } },
+        plotOptions: { bar: { borderRadius: 6, columnWidth: '50%', distributed: true } },
+        colors: ['#1BC5BD', '#3699FF', '#FFA800', '#8950FC', '#7239EA'],
+        xaxis: { categories: s.categoryDist.labels },
+        legend: { show: false }, dataLabels: { enabled: false }
+      }).render();
+
+      new ApexCharts(document.getElementById('weekdayActivity'), {
+        series: [{ name: '완료', data: s.weekday.data }],
+        chart: { type: 'bar', height: 300, toolbar: { show: false } },
+        plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
+        colors: ['#0BB783'],
+        xaxis: { categories: s.weekday.labels }, dataLabels: { enabled: false }
+      }).render();
+    }
+  </script>
+</body>
+
+</html>

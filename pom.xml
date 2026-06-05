@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ─────────────────────────────────────────────
+         부모 POM ("반장")
+         - 직접 코드 없음. 자식 모듈을 묶고 버전을 통합 관리.
+         - packaging=pom 이어야 멀티모듈 부모가 됨 (jar 아님!)
+    ───────────────────────────────────────────── -->
+    <groupId>com.team4.taskfarm</groupId>
+    <artifactId>taskfarm-app</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>taskfarm-app</name>
+    <description>TaskFarm - 게이미피케이션 투두앱 (team4)</description>
+
+    <!-- Spring Boot 부모: 버전은 부트캠프 실습 기준 3.5.14 고정 -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.14</version>
+        <relativePath/>
+    </parent>
+
+    <!-- 자식 모듈 3개 -->
+    <modules>
+        <module>common</module>
+        <module>user</module>
+        <module>admin</module>
+    </modules>
+
+    <properties>
+        <java.version>17</java.version>
+        <!-- 라이브러리 버전을 여기 한 곳에서 관리 (자식들이 참조) -->
+        <java-jwt.version>4.4.0</java-jwt.version>
+    </properties>
+
+    <!-- 자식 모듈이 공통으로 쓸 의존성 버전 관리 (선언만, 실제 추가는 자식에서) -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.auth0</groupId>
+                <artifactId>java-jwt</artifactId>
+                <version>${java-jwt.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>

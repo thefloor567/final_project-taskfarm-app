@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('유저 상세')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('users')}"></div>
+
+    <div class="admin-content">
+
+      <!-- 뒤로 -->
+      <a href="/admin/users" class="btn btn-sm btn-light mb-4">
+        <i class="ki-duotone ki-arrow-left fs-4"><span class="path1"></span><span class="path2"></span></i>
+        목록으로
+      </a>
+
+      <!-- 프로필 헤더 -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-4">
+            <div class="d-flex align-items-center justify-content-center rounded-circle bg-light-primary"
+              style="width:64px;height:64px;font-size:32px;">🧑‍🌾</div>
+            <div>
+              <h2 class="fw-bolder fs-3 text-gray-900 mb-1" id="nickname">유저</h2>
+              <p class="text-gray-500 fs-7 mb-0" id="email">email</p>
+            </div>
+            <div class="ms-auto text-end">
+              <span class="badge badge-light-primary fs-6" id="level">Lv.1</span>
+              <div class="fs-8 text-gray-400 mt-1" id="joinDate">가입일 -</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 활동 요약 -->
+      <div class="row g-4 mb-4">
+        <div class="col-sm-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body text-center py-4">
+              <div class="fw-bolder fs-2 text-primary" id="doneCount">0</div>
+              <div class="fs-8 text-gray-500">완료한 할일</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body text-center py-4">
+              <div class="fw-bolder fs-2 text-success" id="completionRate">0%</div>
+              <div class="fs-8 text-gray-500">완료율</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body text-center py-4">
+              <div class="fw-bolder fs-2 text-warning" id="totalXp">0</div>
+              <div class="fs-8 text-gray-500">누적 XP</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body text-center py-4">
+              <div class="fw-bolder fs-2 text-info" id="cropCount">0</div>
+              <div class="fs-8 text-gray-500">수확 작물</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 활동 추이 차트 -->
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h3 class="card-title fs-5">최근 활동 (할일 완료)</h3>
+        </div>
+        <div class="card-body">
+          <div id="activityChart"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script th:inline="javascript">
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    // 컨트롤러가 넘긴 userId
+    const userId = /*[[${userId}]]*/ 1;
+
+    // 🚧 더미. API(GET /api/admin/users/{id}) 나오면 교체.
+    const detail = {
+      nickname: '초록농부', email: 'green@taskfarm.com', level: 5,
+      joinDate: '2025-05-12', doneCount: 47, completionRate: 78,
+      totalXp: 820, cropCount: 15,
+      activity: { labels: ['월', '화', '수', '목', '금', '토', '일'], data: [2, 4, 3, 5, 1, 6, 4] }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('nickname').textContent = detail.nickname;
+      document.getElementById('email').textContent = detail.email;
+      document.getElementById('level').textContent = 'Lv.' + detail.level;
+      document.getElementById('joinDate').textContent = '가입일 ' + detail.joinDate;
+      document.getElementById('doneCount').textContent = detail.doneCount;
+      document.getElementById('completionRate').textContent = detail.completionRate + '%';
+      document.getElementById('totalXp').textContent = detail.totalXp.toLocaleString();
+      document.getElementById('cropCount').textContent = detail.cropCount;
+
+      if (typeof ApexCharts !== 'undefined') {
+        new ApexCharts(document.getElementById('activityChart'), {
+          series: [{ name: '완료', data: detail.activity.data }],
+          chart: { type: 'bar', height: 280, toolbar: { show: false } },
+          plotOptions: { bar: { borderRadius: 6, columnWidth: '45%' } },
+          colors: ['#3699FF'],
+          xaxis: { categories: detail.activity.labels },
+          dataLabels: { enabled: false }
+        }).render();
+      }
+    });
+  </script>
+</body>
+
+</html>

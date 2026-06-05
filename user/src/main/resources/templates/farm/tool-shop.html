@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('도구 상점')}"></head>
+
+<body>
+  <div class="app-shell">
+
+    <div th:replace="~{fragments/header :: header-back('도구 상점')}"></div>
+
+    <div id="scrollContainer">
+      <div class="p-4 d-flex flex-column gap-3">
+
+        <!-- 보유 코인 -->
+        <div class="card shadow-sm">
+          <div class="card-body py-3 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold fs-6 text-gray-700">보유 코인</span>
+            <span class="fw-bolder fs-4 text-gray-900">🪙 <span id="coin">0</span></span>
+          </div>
+        </div>
+
+        <!-- 도구 목록 -->
+        <div id="toolContainer" class="d-flex flex-column gap-2"></div>
+
+      </div>
+    </div>
+
+    <div th:replace="~{fragments/navbar :: navbar-main('farm')}"></div>
+
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    // 🚧 더미. API(/api/farm/shop/tools) 나오면 교체.
+    let coin = 240;
+    let tools = [
+      {
+        toolId: 1, name: '허수아비', emoji: '🧑‍🌾', price: 100, stock: 5, dailyLimit: 2, boughtToday: 0,
+        effect: '병해충으로부터 밭을 방어해요'
+      },
+      {
+        toolId: 2, name: '비료', emoji: '💩', price: 60, stock: 20, dailyLimit: 5, boughtToday: 1,
+        effect: '작물 성장 속도를 높여줘요'
+      },
+      {
+        toolId: 3, name: '온실', emoji: '🏡', price: 200, stock: 2, dailyLimit: 1, boughtToday: 0,
+        effect: '날씨와 상관없이 작물을 지켜요'
+      },
+    ];
+
+    document.addEventListener('DOMContentLoaded', function () {
+      render();
+    });
+
+    function render() {
+      document.getElementById('coin').textContent = coin;
+      const box = document.getElementById('toolContainer');
+      box.innerHTML = '';
+
+      tools.forEach(t => {
+        const remaining = t.dailyLimit - t.boughtToday;
+        const soldOut = t.stock <= 0;
+        const limitReached = remaining <= 0;
+        const tooPoor = coin < t.price;
+        const disabled = soldOut || limitReached || tooPoor;
+
+        let btnLabel = `🪙 ${t.price}`;
+        if (soldOut) btnLabel = '품절';
+        else if (limitReached) btnLabel = '오늘 마감';
+        else if (tooPoor) btnLabel = '코인 부족';
+
+        const card = document.createElement('div');
+        card.className = 'card shadow-sm';
+        card.innerHTML = `
+            <div class="card-body py-3">
+                <div class="d-flex align-items-start gap-3">
+                    <div style="font-size:36px;">${t.emoji}</div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold fs-6 text-gray-800">${t.name}</div>
+                        <div class="fs-8 text-gray-500 mb-2">${t.effect}</div>
+                        <div class="d-flex gap-2">
+                            <span class="badge badge-sm badge-light-secondary">재고 ${soldOut ? 0 : t.stock}</span>
+                            <span class="badge badge-sm ${remaining > 0 ? 'badge-light-primary' : 'badge-light-danger'}">
+                                오늘 ${remaining > 0 ? remaining + '개 남음' : '구매 마감'}
+                            </span>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm ${disabled ? 'btn-light text-gray-400' : 'btn-primary'}"
+                            ${disabled ? 'disabled' : ''}
+                            onclick="buyTool(${t.toolId})">
+                        ${btnLabel}
+                    </button>
+                </div>
+            </div>
+        `;
+        box.appendChild(card);
+      });
+    }
+
+    function buyTool(toolId) {
+      const t = tools.find(x => x.toolId === toolId);
+      if (!t) return;
+
+      // 사전 체크 (실제 검증은 서버 권위)
+      if (coin < t.price) return warn("코인이 부족해요!");
+      if (t.stock <= 0) return warn("품절된 도구예요.");
+      if (t.dailyLimit - t.boughtToday <= 0) return warn("오늘 구매 한도에 도달했어요.");
+
+      // 🚧 POST /api/farm/shop/tools/{id}/buy
+      //    서버가 코인 차감·재고·한도 검증 후 효과 적용(허수아비 방어/비료/온실).
+      coin -= t.price;
+      t.stock--;
+      t.boughtToday++;
+      render();
+
+      Swal.fire({
+        html: `<b>${t.name}</b> 구매 완료!<br><span class="fs-7 text-gray-500">${t.effect}</span>`,
+        icon: "success", buttonsStyling: false, confirmButtonText: "확인",
+        customClass: { confirmButton: "btn btn-primary" }
+      });
+    }
+
+    function warn(msg) {
+      Swal.fire({
+        text: msg, icon: "warning", buttonsStyling: false,
+        confirmButtonText: "확인", customClass: { confirmButton: "btn btn-primary" }
+      });
+    }
+  </script>
+</body>
+
+</html>

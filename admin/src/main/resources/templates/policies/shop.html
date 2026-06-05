@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('상점 정책')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('shop')}"></div>
+
+    <div class="admin-content">
+
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">상점 정책</h1>
+      <p class="text-gray-500 fs-6 mb-6">씨앗·도구 가격·재고·한도·보상 밸런스 조정</p>
+
+      <div class="card shadow-sm mb-4 border-0" style="background:#FFF8DD;">
+        <div class="card-body py-3">
+          <span class="fs-7 text-gray-700">
+            ⚖️ 가격·재고는 경제 밸런스에 직접 영향을 줍니다. 수정 시 유저 경험을 고려하세요.
+          </span>
+        </div>
+      </div>
+
+      <!-- 탭 -->
+      <div class="d-flex gap-2 mb-4">
+        <button type="button" class="btn btn-sm btn-primary tab-btn" data-tab="seeds" onclick="selectTab(this)"
+          style="width:120px;">🌱 씨앗</button>
+        <button type="button" class="btn btn-sm btn-light tab-btn" data-tab="tools" onclick="selectTab(this)"
+          style="width:120px;">🛠️ 도구</button>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-row-bordered align-middle">
+              <thead>
+                <tr class="fw-bold fs-7 text-gray-500 text-uppercase">
+                  <th>아이템</th>
+                  <th style="width:120px;">가격(코인)</th>
+                  <th style="width:120px;">재고</th>
+                  <th style="width:130px;">하루 한도</th>
+                  <th style="width:120px;" id="rewardHeader">보상</th>
+                  <th style="width:100px;" class="text-end">저장</th>
+                </tr>
+              </thead>
+              <tbody id="shopTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    let currentTab = 'seeds';
+
+    // 🚧 더미. API(GET /api/admin/shop/items) 나오면 교체.
+    // 씨앗: 보상=수확량(작물 몇 개) / 도구: 보상=효과수치 같은 개념
+    let items = {
+      seeds: [
+        { itemId: 1, name: '🍅 토마토 씨앗', price: 30, stock: 99, dailyLimit: 5, reward: 3 },
+        { itemId: 2, name: '🥕 당근 씨앗', price: 20, stock: 99, dailyLimit: 5, reward: 2 },
+        { itemId: 3, name: '🌽 옥수수 씨앗', price: 50, stock: 10, dailyLimit: 3, reward: 4 },
+        { itemId: 4, name: '🍓 딸기 씨앗', price: 80, stock: 20, dailyLimit: 2, reward: 5 },
+      ],
+      tools: [
+        { itemId: 11, name: '🧑‍🌾 허수아비', price: 100, stock: 5, dailyLimit: 2, reward: 0 },
+        { itemId: 12, name: '💩 비료', price: 60, stock: 20, dailyLimit: 5, reward: 0 },
+        { itemId: 13, name: '🏡 온실', price: 200, stock: 2, dailyLimit: 1, reward: 0 },
+      ]
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      render();
+    });
+
+    function selectTab(btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('btn-primary'); b.classList.add('btn-light');
+      });
+      btn.classList.remove('btn-light'); btn.classList.add('btn-primary');
+      currentTab = btn.dataset.tab;
+      render();
+    }
+
+    function render() {
+      // 보상 헤더 라벨 (씨앗=수확량 / 도구=효과)
+      document.getElementById('rewardHeader').textContent =
+        currentTab === 'seeds' ? '수확량' : '효과수치';
+
+      const tbody = document.getElementById('shopTableBody');
+      tbody.innerHTML = '';
+      items[currentTab].forEach(it => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-semibold fs-6 text-gray-800">${it.name}</td>
+            <td><input type="number" class="form-control form-control-sm" min="0" value="${it.price}" id="price-${it.itemId}"></td>
+            <td><input type="number" class="form-control form-control-sm" min="0" value="${it.stock}" id="stock-${it.itemId}"></td>
+            <td><input type="number" class="form-control form-control-sm" min="0" value="${it.dailyLimit}" id="limit-${it.itemId}"></td>
+            <td><input type="number" class="form-control form-control-sm" min="0" value="${it.reward}" id="reward-${it.itemId}"></td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-light-primary" onclick="saveItem(${it.itemId})">저장</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function saveItem(itemId) {
+      const price = parseInt(document.getElementById('price-' + itemId).value);
+      const stock = parseInt(document.getElementById('stock-' + itemId).value);
+      const limit = parseInt(document.getElementById('limit-' + itemId).value);
+      const reward = parseInt(document.getElementById('reward-' + itemId).value);
+
+      if ([price, stock, limit, reward].some(v => isNaN(v) || v < 0)) {
+        return Swal.fire({
+          text: "0 이상의 숫자를 입력해주세요.", icon: "warning",
+          buttonsStyling: false, confirmButtonText: "확인",
+          customClass: { confirmButton: "btn btn-primary" }
+        });
+      }
+
+      // 🚧 PATCH /api/admin/shop/items/{itemId} {price, stock, dailyLimit, reward}
+      const it = items[currentTab].find(x => x.itemId === itemId);
+      it.price = price; it.stock = stock; it.dailyLimit = limit; it.reward = reward;
+
+      Swal.fire({
+        text: `${it.name} 정책이 저장되었습니다.`, icon: "success",
+        buttonsStyling: false, confirmButtonText: "확인",
+        customClass: { confirmButton: "btn btn-primary" }
+      });
+    }
+  </script>
+</body>
+
+</html>

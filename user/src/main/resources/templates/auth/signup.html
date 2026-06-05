@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('회원가입')}"></head>
+
+<body>
+  <div class="app-shell justify-content-center">
+    <div class="d-flex flex-column justify-content-center align-items-center flex-grow-1 p-4">
+
+      <div class="w-100" style="max-width: 380px;">
+
+        <!-- 로고/타이틀 -->
+        <div class="text-center mb-8">
+          <div style="font-size: 56px;">🌾</div>
+          <h1 class="fw-bolder fs-2x text-gray-900 mt-3">회원가입</h1>
+          <p class="text-gray-500 fs-6 mt-2">TaskFarm과 함께 시작해요</p>
+        </div>
+
+        <!-- 회원가입 카드 -->
+        <div class="card shadow-sm">
+          <div class="card-body p-4 d-flex flex-column gap-3">
+
+            <div>
+              <label class="form-label fw-semibold text-gray-700">이메일</label>
+              <input type="email" id="email" class="form-control form-control-lg" placeholder="email@example.com"
+                autocomplete="username">
+            </div>
+
+            <div>
+              <label class="form-label fw-semibold text-gray-700">비밀번호</label>
+              <input type="password" id="password" class="form-control form-control-lg" placeholder="8자 이상"
+                autocomplete="new-password">
+            </div>
+
+            <div>
+              <label class="form-label fw-semibold text-gray-700">닉네임</label>
+              <input type="text" id="nickname" class="form-control form-control-lg" placeholder="농장에서 쓸 이름"
+                onkeyup="if(event.key==='Enter') handleSignup()">
+            </div>
+
+            <button type="button" class="btn btn-primary btn-lg w-100 mt-2" onclick="handleSignup()">가입하기</button>
+
+            <div class="text-center mt-2">
+              <span class="text-gray-500 fs-7">이미 회원이신가요?</span>
+              <a href="/" class="fw-semibold fs-7 ms-1">로그인</a>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    function handleSignup() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const nickname = document.getElementById('nickname').value.trim();
+
+      // 클라이언트 검증
+      if (!email || !password || !nickname) {
+        return alertWarn("모든 항목을 입력해주세요.");
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return alertWarn("올바른 이메일 형식이 아닙니다.");
+      }
+      if (password.length < 8) {
+        return alertWarn("비밀번호는 8자 이상이어야 합니다.");
+      }
+
+      fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password, nickname })
+      })
+        .then(res => res.json())
+        .then(res => {
+          if (res.result) {
+            Swal.fire({
+              text: "가입이 완료되었습니다!",
+              icon: "success", buttonsStyling: false,
+              confirmButtonText: "시작하기",
+              customClass: { confirmButton: "btn btn-primary" }
+            }).then(() => {
+              // 명세서: 가입 성공 후 home으로 이동
+              // (백엔드가 가입과 동시에 토큰 내려주면 쿠키 저장 후 /home,
+              //  아니면 /로 보내 로그인하게 — 인증 task 때 확정)
+              if (res.data && res.data.token) {
+                document.cookie = `token=${res.data.token}; path=/; max-age=86400`;
+                location.href = '/home';
+              } else {
+                location.href = '/';
+              }
+            });
+          } else {
+            Swal.fire({
+              text: res.message || "회원가입에 실패했습니다.",
+              icon: "error", buttonsStyling: false,
+              confirmButtonText: "확인",
+              customClass: { confirmButton: "btn btn-danger" }
+            });
+          }
+        })
+        .catch(err => console.error(err));
+    }
+
+    function alertWarn(msg) {
+      Swal.fire({
+        text: msg, icon: "warning", buttonsStyling: false,
+        confirmButtonText: "확인",
+        customClass: { confirmButton: "btn btn-primary" }
+      });
+    }
+  </script>
+</body>
+
+</html>

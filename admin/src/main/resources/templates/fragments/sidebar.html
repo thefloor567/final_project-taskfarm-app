@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head></head>
+
+<body>
+
+  <!-- active 인자로 현재 메뉴 강조 -->
+  <th:block th:fragment="sidebar(active)">
+    <div class="admin-sidebar">
+
+      <!-- 브랜드 -->
+      <div class="d-flex align-items-center gap-2 px-4 py-4 border-bottom border-dark">
+        <span style="font-size:24px;">🌾</span>
+        <span class="brand-text fw-bolder fs-5">TaskFarm <span class="text-primary">Admin</span></span>
+      </div>
+
+      <!-- 메뉴 -->
+      <div class="py-3 flex-grow-1">
+        <a href="/dashboard" class="admin-menu-item" th:classappend="${active == 'dashboard'} ? 'active'">
+          <i class="ki-duotone ki-element-11 fs-3"><span class="path1"></span><span class="path2"></span><span
+              class="path3"></span><span class="path4"></span></i>
+          <span class="menu-label">대시보드</span>
+        </a>
+        <a href="/users" class="admin-menu-item" th:classappend="${active == 'users'} ? 'active'">
+          <i class="ki-duotone ki-profile-user fs-3"><span class="path1"></span><span class="path2"></span><span
+              class="path3"></span><span class="path4"></span></i>
+          <span class="menu-label">유저 관리</span>
+        </a>
+        <a href="/stats" class="admin-menu-item" th:classappend="${active == 'stats'} ? 'active'">
+          <i class="ki-duotone ki-chart-simple fs-3"><span class="path1"></span><span class="path2"></span><span
+              class="path3"></span><span class="path4"></span></i>
+          <span class="menu-label">서비스 통계</span>
+        </a>
+        <a href="/gemini" class="admin-menu-item" th:classappend="${active == 'gemini'} ? 'active'">
+          <i class="ki-duotone ki-abstract-26 fs-3"><span class="path1"></span><span class="path2"></span></i>
+          <span class="menu-label">Gemini 모니터링</span>
+        </a>
+
+        <!-- 정책 그룹 -->
+        <div class="px-4 pt-4 pb-2">
+          <span class="menu-label fs-9 fw-bold text-uppercase" style="color:#565674;">정책 관리</span>
+        </div>
+        <a href="/policies/exp" class="admin-menu-item" th:classappend="${active == 'exp'} ? 'active'">
+          <i class="ki-duotone ki-star fs-3"><span class="path1"></span></i>
+          <span class="menu-label">경험치 정책</span>
+        </a>
+        <a href="/policies/shop" class="admin-menu-item" th:classappend="${active == 'shop'} ? 'active'">
+          <i class="ki-duotone ki-handcart fs-3"><span class="path1"></span></i>
+          <span class="menu-label">상점 정책</span>
+        </a>
+        <a href="/policies/events" class="admin-menu-item" th:classappend="${active == 'events'} ? 'active'">
+          <i class="ki-duotone ki-gift fs-3"><span class="path1"></span><span class="path2"></span><span
+              class="path3"></span><span class="path4"></span></i>
+          <span class="menu-label">이벤트 정책</span>
+        </a>
+      </div>
+
+      <!-- 로그아웃 -->
+      <div class="border-top border-dark">
+        <a href="#" onclick="adminLogout(); return false;" class="admin-menu-item">
+          <i class="ki-duotone ki-exit-right fs-3"><span class="path1"></span><span class="path2"></span></i>
+          <span class="menu-label">로그아웃</span>
+        </a>
+      </div>
+
+    </div>
+  </th:block>
+
+</body>
+
+</html>

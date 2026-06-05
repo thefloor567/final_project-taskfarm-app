@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('이벤트 정책')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('events')}"></div>
+
+    <div class="admin-content">
+
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">이벤트 정책</h1>
+      <p class="text-gray-500 fs-6 mb-6">스트릭 구간별 이벤트 풀·확률 조정</p>
+
+      <!-- 안내 -->
+      <div class="card shadow-sm mb-4 border-0" style="background:#F1FAFF;">
+        <div class="card-body py-3">
+          <span class="fs-7 text-gray-700">
+            🎲 이벤트는 서버가 <b>(유저ID + 날짜)</b>를 시드로 고정 생성합니다.
+            같은 날 리롤은 불가하며, 스트릭이 높을수록 좋은 이벤트 풀이 열립니다.
+          </span>
+        </div>
+      </div>
+
+      <!-- 스트릭 구간 선택 탭 -->
+      <div class="d-flex gap-2 mb-4 flex-wrap">
+        <button type="button" class="btn btn-sm btn-primary streak-btn" data-streak="low"
+          onclick="selectStreak(this)">🌱 1~2일 (낮음)</button>
+        <button type="button" class="btn btn-sm btn-light streak-btn" data-streak="mid" onclick="selectStreak(this)">🌿
+          3~6일 (중간)</button>
+        <button type="button" class="btn btn-sm btn-light streak-btn" data-streak="high" onclick="selectStreak(this)">🌳
+          7일+ (높음)</button>
+      </div>
+
+      <!-- 확률 합계 표시 -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-body py-3 d-flex justify-content-between align-items-center">
+          <span class="fw-semibold fs-6 text-gray-700">현재 구간 확률 합계</span>
+          <span class="fw-bolder fs-3" id="totalProb">0%</span>
+        </div>
+      </div>
+
+      <!-- 이벤트 풀 테이블 -->
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h3 class="card-title fs-5">이벤트 풀</h3>
+          <div class="card-toolbar">
+            <button class="btn btn-sm btn-primary" onclick="saveConfig()">전체 저장</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-row-bordered align-middle">
+              <thead>
+                <tr class="fw-bold fs-7 text-gray-500 text-uppercase">
+                  <th>이벤트</th>
+                  <th>효과</th>
+                  <th style="width:160px;">출현 확률(%)</th>
+                </tr>
+              </thead>
+              <tbody id="eventTableBody"></tbody>
+            </table>
+          </div>
+          <div class="fs-8 text-gray-400 mt-2">
+            💡 확률 합계는 100%가 되도록 맞추는 것을 권장합니다 (서버에서 정규화할 수도 있음).
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    let currentStreak = 'low';
+
+    // 🚧 더미. API(GET /api/admin/events) 나오면 교체.
+    // 스트릭 구간별로 이벤트 풀과 확률이 다름
+    let config = {
+      low: [
+        { eventId: 1, name: '평범한 날', effect: '특별한 보너스 없음', prob: 60 },
+        { eventId: 2, name: '물방울 +2', effect: '오늘 물주기 보너스', prob: 30 },
+        { eventId: 3, name: '코인 +10', effect: '소액 코인 지급', prob: 10 },
+      ],
+      mid: [
+        { eventId: 4, name: '물방울 +5', effect: '물주기 보너스', prob: 40 },
+        { eventId: 5, name: '풍년의 날', effect: '수확 작물 +1', prob: 35 },
+        { eventId: 6, name: '코인 +30', effect: '코인 지급', prob: 25 },
+      ],
+      high: [
+        { eventId: 7, name: '풍년의 날', effect: '수확 작물 +2', prob: 40 },
+        { eventId: 8, name: '황금 씨앗', effect: '희귀 씨앗 지급', prob: 35 },
+        { eventId: 9, name: '코인 폭우', effect: '코인 +100', prob: 25 },
+      ]
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      render();
+    });
+
+    function selectStreak(btn) {
+      document.querySelectorAll('.streak-btn').forEach(b => {
+        b.classList.remove('btn-primary'); b.classList.add('btn-light');
+      });
+      btn.classList.remove('btn-light'); btn.classList.add('btn-primary');
+      currentStreak = btn.dataset.streak;
+      render();
+    }
+
+    function render() {
+      const tbody = document.getElementById('eventTableBody');
+      tbody.innerHTML = '';
+      config[currentStreak].forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-semibold fs-6 text-gray-800">${e.name}</td>
+            <td class="fs-7 text-gray-500">${e.effect}</td>
+            <td>
+                <input type="number" class="form-control form-control-sm" min="0" max="100"
+                       value="${e.prob}" id="prob-${e.eventId}" onchange="updateTotal()">
+            </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      updateTotal();
+    }
+
+    function updateTotal() {
+      let total = 0;
+      config[currentStreak].forEach(e => {
+        const v = parseInt(document.getElementById('prob-' + e.eventId).value) || 0;
+        total += v;
+      });
+      const el = document.getElementById('totalProb');
+      el.textContent = total + '%';
+      // 100% 아니면 경고색
+      el.className = 'fw-bolder fs-3 ' + (total === 100 ? 'text-success' : 'text-danger');
+    }
+
+    function saveConfig() {
+      let total = 0;
+      config[currentStreak].forEach(e => {
+        const v = parseInt(document.getElementById('prob-' + e.eventId).value);
+        if (isNaN(v) || v < 0) { total = -1; return; }
+        e.prob = v; total += v;
+      });
+
+      if (total === -1) {
+        return Swal.fire({
+          text: "0 이상의 숫자를 입력해주세요.", icon: "warning",
+          buttonsStyling: false, confirmButtonText: "확인",
+          customClass: { confirmButton: "btn btn-primary" }
+        });
+      }
+
+      if (total !== 100) {
+        // 합계 100 아니어도 저장은 가능하게 하되 확인받기
+        return Swal.fire({
+          text: `확률 합계가 ${total}%입니다. 100%가 아니어도 저장할까요?`,
+          icon: "question", buttonsStyling: false, showCancelButton: true,
+          confirmButtonText: "저장", cancelButtonText: "취소",
+          customClass: { confirmButton: "btn btn-primary", cancelButton: "btn btn-light" }
+        }).then(r => { if (r.isConfirmed) doSave(); });
+      }
+      doSave();
+    }
+
+    function doSave() {
+      // 🚧 PATCH /api/admin/events {streak, events:[{eventId, prob}...]}
+      Swal.fire({
+        text: "이벤트 정책이 저장되었습니다.", icon: "success",
+        buttonsStyling: false, confirmButtonText: "확인",
+        customClass: { confirmButton: "btn btn-primary" }
+      });
+    }
+  </script>
+</body>
+
+</html>

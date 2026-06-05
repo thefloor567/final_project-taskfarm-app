@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('Gemini 모니터링')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('gemini')}"></div>
+
+    <div class="admin-content">
+
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">Gemini 모니터링</h1>
+      <p class="text-gray-500 fs-6 mb-6">AI 호출량·캐시 효율·비용 추적</p>
+
+      <!-- 핵심 지표 -->
+      <div class="row g-4 mb-4">
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">총 호출 요청</div>
+                  <div class="fw-bolder fs-2 text-gray-900 mt-1" id="totalRequests">0</div>
+                </div>
+                <span style="font-size:28px;">✨</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">캐시 적중률</div>
+                  <div class="fw-bolder fs-2 text-success mt-1" id="cacheRate">0%</div>
+                </div>
+                <span style="font-size:28px;">⚡</span>
+              </div>
+              <div class="fs-8 text-gray-400 mt-2">캐시로 절약한 호출</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">실제 API 호출</div>
+                  <div class="fw-bolder fs-2 text-warning mt-1" id="actualCalls">0</div>
+                </div>
+                <span style="font-size:28px;">📡</span>
+              </div>
+              <div class="fs-8 text-gray-400 mt-2">캐시 미스 = 과금 대상</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">이번 달 비용</div>
+                  <div class="fw-bolder fs-2 text-danger mt-1" id="monthCost">$0</div>
+                </div>
+                <span style="font-size:28px;">💰</span>
+              </div>
+              <div class="fs-8 text-gray-400 mt-2">예상 청구액</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 절약 효과 배너 (캐시 도입 어필) -->
+      <div class="card shadow-sm mb-4 border-0" style="background:#E8FFF3;">
+        <div class="card-body py-4">
+          <div class="d-flex align-items-center gap-3">
+            <span style="font-size:36px;">🛡️</span>
+            <div>
+              <div class="fw-bold fs-5 text-gray-900">
+                캐시로 <span class="text-success" id="savedCalls">0</span>회 절약
+                (약 <span class="text-success" id="savedCost">$0</span>)
+              </div>
+              <div class="fs-7 text-gray-600">
+                동일 조건(카테고리+우선순위+제목)은 Redis 캐시로 재사용해 중복 호출을 막습니다
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 차트 -->
+      <div class="row g-4">
+        <div class="col-xl-8">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">일별 호출 추이 (캐시 vs 실호출)</h3>
+            </div>
+            <div class="card-body">
+              <div id="callTrend"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">캐시 효율</h3>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+              <div id="cacheDonut"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    // 🚧 더미. API(GET /api/admin/gemini/usage) 나오면 교체.
+    const g = {
+      totalRequests: 3420,   // 유저가 추천버튼 누른 총 횟수
+      actualCalls: 1231,     // 실제 Gemini API 호출(캐시 미스)
+      costPerCall: 0.0012,   // 호출당 단가(예시)
+      daily: {
+        labels: ['6/1', '6/2', '6/3', '6/4', '6/5', '6/6', '6/7'],
+        cache: [320, 410, 380, 450, 520, 390, 340],   // 캐시 히트
+        actual: [180, 160, 200, 190, 230, 150, 121],   // 실호출
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const cacheHits = g.totalRequests - g.actualCalls;
+      const cacheRate = Math.round(cacheHits / g.totalRequests * 100);
+      const monthCost = g.actualCalls * g.costPerCall;
+      const savedCost = cacheHits * g.costPerCall;
+
+      document.getElementById('totalRequests').textContent = g.totalRequests.toLocaleString();
+      document.getElementById('cacheRate').textContent = cacheRate + '%';
+      document.getElementById('actualCalls').textContent = g.actualCalls.toLocaleString();
+      document.getElementById('monthCost').textContent = '$' + monthCost.toFixed(2);
+      document.getElementById('savedCalls').textContent = cacheHits.toLocaleString();
+      document.getElementById('savedCost').textContent = '$' + savedCost.toFixed(2);
+
+      renderCharts();
+    });
+
+    function renderCharts() {
+      if (typeof ApexCharts === 'undefined') { console.warn('ApexCharts 없음'); return; }
+
+      // 일별 호출 추이 (스택 막대: 캐시 vs 실호출)
+      new ApexCharts(document.getElementById('callTrend'), {
+        series: [
+          { name: '캐시 히트', data: g.daily.cache },
+          { name: '실제 호출', data: g.daily.actual }
+        ],
+        chart: { type: 'bar', height: 320, stacked: true, toolbar: { show: false } },
+        plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
+        colors: ['#0BB783', '#FFA800'],
+        xaxis: { categories: g.daily.labels },
+        legend: { position: 'top' }, dataLabels: { enabled: false }
+      }).render();
+
+      // 캐시 효율 도넛
+      const cacheHits = g.totalRequests - g.actualCalls;
+      new ApexCharts(document.getElementById('cacheDonut'), {
+        series: [cacheHits, g.actualCalls],
+        chart: { type: 'donut', height: 280 },
+        labels: ['캐시 절약', '실제 호출'],
+        colors: ['#0BB783', '#FFA800'],
+        legend: { position: 'bottom' }
+      }).render();
+    }
+  </script>
+</body>
+
+</html>
