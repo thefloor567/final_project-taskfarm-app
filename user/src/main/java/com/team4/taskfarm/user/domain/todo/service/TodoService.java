@@ -33,47 +33,47 @@ public class TodoService {
 			
 			// 1. 완료 여부 + 카테고리 + 날짜
 			if (isDone != null && idxCat != null) {
-				todo = todoRepository.findByIdxUserAndIsDoneAndIdxCatAndDueDateBetweenOrderByCreateDateDesc(
+				todo = todoRepository.findByIdxUserAndIsDoneAndIdxCatAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
 							idxUser, isDone, idxCat, start, end
 						);
 				
 			// 2. 완려 여부 + 날짜
 			} else if (isDone != null) {
-				todo = todoRepository.findByIdxUserAndIsDoneAndDueDateBetweenOrderByCreateDateDesc(
+				todo = todoRepository.findByIdxUserAndIsDoneAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
 							idxUser, isDone, start, end
 						);
 				
 			// 3. 카테고리 + 날짜
 			} else if (idxCat != null) {
-				todo = todoRepository.findByIdxUserAndIdxCatAndDueDateBetweenOrderByCreateDateDesc(
+				todo = todoRepository.findByIdxUserAndIdxCatAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
 							idxUser, idxCat, start, end
 						);
 			
 			// 4. 날짜
 			} else {
-				todo = todoRepository.findByIdxUserAndDueDateBetweenOrderByCreateDateDesc(
+				todo = todoRepository.findByIdxUserAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
 							idxUser, start, end
 						);
 			}
 		} else {
 			// 5. 완려 여부 + 카테고리
 			if (isDone != null && idxCat != null) {
-				todo = todoRepository.findByIdxUserAndIsDoneAndIdxCatOrderByCreateDateDesc(
+				todo = todoRepository.findByIdxUserAndIsDoneAndIdxCatAndDeleteDateIsNullOrderByCreateDateDesc(
 							idxUser, isDone, idxCat
 						);
 			// 6. 완려 여부
 			} else if (isDone != null) {
-				todo = todoRepository.findByIdxUserAndIsDoneOrderByCreateDateDesc(
+				todo = todoRepository.findByIdxUserAndIsDoneAndDeleteDateIsNullOrderByCreateDateDesc(
 							idxUser, isDone
 						);
 			// 7. 카테고리
 			} else  if (idxCat != null) {
-				todo = todoRepository.findByIdxUserAndIdxCatOrderByCreateDateDesc(
+				todo = todoRepository.findByIdxUserAndIdxCatAndDeleteDateIsNullOrderByCreateDateDesc(
 							idxUser, idxCat
 						);
 			// 8. 모두 X
 			} else {
-				todo = todoRepository.findByIdxUserOrderByCreateDateDesc(idxUser);
+				todo = todoRepository.findByIdxUserAndDeleteDateIsNullOrderByCreateDateDesc(idxUser);
 			}
 		}
 		
@@ -110,7 +110,7 @@ public class TodoService {
 	@Transactional
 	public void deleteTodo(Long idxUser, Long idxTodo) {
 		TbTodo todo = findTodo(idxUser, idxTodo);
-		todoRepository.delete(todo);
+		todo.softDelete();
 	}
 	
 	// findTodo에서 찾아오고 완료 처리
@@ -124,7 +124,7 @@ public class TodoService {
 	
 	// repo에서 idxUser와 idxTodo로 해당 사용자의 할일 찾아오기
 	private TbTodo findTodo(Long idxUser, Long idxTodo) {
-		return todoRepository.findByIdxUserAndIdxTodo(idxUser, idxTodo)
+		return todoRepository.findByIdxUserAndIdxTodoAndDeleteDateIsNull(idxUser, idxTodo)
 								.orElseThrow(() -> CustomException.notFound("할일을 찾을 수 없습니다."));
 	}
 	

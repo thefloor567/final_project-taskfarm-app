@@ -66,8 +66,17 @@ public class TbTodo extends BaseEntity {
     
     // complete 메서드
     public void complete() {
-    	this.isDone = true;
-    	this.completeDate = LocalDateTime.now();
+        if (this.isDone) {
+            return;
+        }
+
+        this.isDone = true;
+        this.completeDate = LocalDateTime.now();
+    }
+    
+    // soft delete 메서드
+    public void softDelete() {
+    	this.deleteDate = LocalDateTime.now();
     }
     
     // 새로운 Todo 엔티티를 만들어주는 메서드

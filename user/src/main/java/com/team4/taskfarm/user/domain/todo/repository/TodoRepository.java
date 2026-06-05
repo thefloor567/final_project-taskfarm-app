@@ -10,25 +10,35 @@ import com.team4.taskfarm.common.entity.todo.TbTodo;
 
 public interface TodoRepository extends JpaRepository<TbTodo, Long>{
 
-	Optional<TbTodo> findByIdxUserAndIdxTodo(Long idxUser, Long idxTodo);
+	List<TbTodo> findByIdxUserAndIsDoneAndIdxCatAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
+	        Long idxUser, Boolean isDone, Long idxCat, LocalDateTime start, LocalDateTime end
+	);
 
-	List<TbTodo> findByIdxUserAndIsDoneAndIdxCatAndDueDateBetweenOrderByCreateDateDesc(Long idxUser, Boolean isDone,
-			Long idxCat, LocalDateTime start, LocalDateTime end);
-	
-	List<TbTodo> findByIdxUserAndIsDoneAndDueDateBetweenOrderByCreateDateDesc(Long idxUser, Boolean isDone,
-			LocalDateTime start, LocalDateTime end);
+	List<TbTodo> findByIdxUserAndIsDoneAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
+	        Long idxUser, Boolean isDone, LocalDateTime start, LocalDateTime end
+	);
 
-	List<TbTodo> findByIdxUserAndIdxCatAndDueDateBetweenOrderByCreateDateDesc(Long idxUser, Long idxCat,
-			LocalDateTime start, LocalDateTime end);
+	List<TbTodo> findByIdxUserAndIdxCatAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
+	        Long idxUser, Long idxCat, LocalDateTime start, LocalDateTime end
+	);
 
-	List<TbTodo> findByIdxUserAndDueDateBetweenOrderByCreateDateDesc(Long idxUser, LocalDateTime start,
-			LocalDateTime end);
-	
-	List<TbTodo> findByIdxUserAndIsDoneAndIdxCatOrderByCreateDateDesc(Long idxUser, Boolean isDone, Long idxCat);
+	List<TbTodo> findByIdxUserAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
+	        Long idxUser, LocalDateTime start, LocalDateTime end
+	);
 
-	List<TbTodo> findByIdxUserAndIsDoneOrderByCreateDateDesc(Long idxUser, Boolean isDone);
+	List<TbTodo> findByIdxUserAndIsDoneAndIdxCatAndDeleteDateIsNullOrderByCreateDateDesc(
+	        Long idxUser, Boolean isDone, Long idxCat
+	);
 
-	List<TbTodo> findByIdxUserAndIdxCatOrderByCreateDateDesc(Long idxUser, Long idxCat);
+	List<TbTodo> findByIdxUserAndIsDoneAndDeleteDateIsNullOrderByCreateDateDesc(
+	        Long idxUser, Boolean isDone
+	);
 
-	List<TbTodo> findByIdxUserOrderByCreateDateDesc(Long idxUser);
+	List<TbTodo> findByIdxUserAndIdxCatAndDeleteDateIsNullOrderByCreateDateDesc(
+	        Long idxUser, Long idxCat
+	);
+
+	List<TbTodo> findByIdxUserAndDeleteDateIsNullOrderByCreateDateDesc(Long idxUser);
+
+	Optional<TbTodo> findByIdxUserAndIdxTodoAndDeleteDateIsNull(Long idxUser, Long idxTodo);
 }

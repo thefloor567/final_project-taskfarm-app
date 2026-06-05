@@ -34,9 +34,9 @@ public class TodoApiController extends UserBaseController {
 	// 할일 목록 조회
 	@GetMapping
 	public ResponseEntity<ApiResponse<List<TodoResponse>>> getTodoList(
-				@RequestParam(required = false) Boolean isDone,
-				@RequestParam(required = false) Long idxCat,
-				@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDate
+			@RequestParam(required = false, defaultValue = "false") Boolean isDone,
+	        @RequestParam(required = false) Long idxCat,
+	        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDate
 			){
 		Long idxUser = getCurrentUserIdx();
 		return ok(todoService.getTodoList(idxUser, isDone, idxCat, dueDate));
@@ -52,31 +52,31 @@ public class TodoApiController extends UserBaseController {
 	}
 	
 	// 할일 수정
-	@PatchMapping("/{idxtodo}")
+	@PatchMapping("/{idxTodo}")
 	public ResponseEntity<ApiResponse<TodoResponse>> updateTodo(
-				@PathVariable Long idxtodo,
+				@PathVariable Long idxTodo,
 				@Valid @RequestBody TodoRequest request
 			) {
 		Long idxUser = getCurrentUserIdx();
-		return ok(todoService.updateTodo(idxUser, idxtodo, request));
+		return ok(todoService.updateTodo(idxUser, idxTodo, request));
 	}
 	
 	// 할일 삭제
-	@DeleteMapping("/{idxtodo}")
+	@DeleteMapping("/{idxTodo}")
 	public ResponseEntity<ApiResponse<Void>> deleteTodo(
-				@PathVariable Long idxtodo
+				@PathVariable Long idxTodo
 			){
 		Long idxUser = getCurrentUserIdx();
-		todoService.deleteTodo(idxUser, idxtodo);
+		todoService.deleteTodo(idxUser, idxTodo);
 		return ok();
 	}
 	
 	// 할일 완료
-	@PatchMapping("/{idxtodo}/complete")
+	@PatchMapping("/{idxTodo}/complete")
 	public ResponseEntity<ApiResponse<TodoResponse>> completeTodo(
-				@PathVariable Long idxtodo
+				@PathVariable Long idxTodo
 			){
 		Long idxUser = getCurrentUserIdx();
-		return ok(todoService.completeTodo(idxUser, idxtodo));
+		return ok(todoService.completeTodo(idxUser, idxTodo));
 	}
 }
