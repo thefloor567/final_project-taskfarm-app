@@ -36,4 +36,14 @@ public class TbSeedInv {
     @LastModifiedDate
     @Column(name = "UpdateDate")
     private LocalDateTime updateDate;
+    
+    
+    /** 씨앗 1개 소비(심기). 재고 없으면 예외. */
+    public void consumeOne() {
+        if (qty <= 0) {
+            throw com.team4.taskfarm.common.exception.CustomException
+                    .badRequest("보유한 씨앗이 없습니다.");
+        }
+        qty--;
+    }
 }
