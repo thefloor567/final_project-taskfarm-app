@@ -118,7 +118,7 @@
     let profileModal = null;
     let passwordModal = null;
 
-    // 🚧 더미. API(GET /api/auth/me) 나오면 교체.
+    // TODO: GET /api/auth/me 연동 전 임시 데이터
     let profile = {
       nickname: '초록농부',
       email: 'farmer@taskfarm.com',
@@ -144,15 +144,35 @@
       document.getElementById('editNickname').value = profile.nickname;
       profileModal.show();
     }
-    function saveProfile() {
+
+    async function saveProfile() {
       const nickname = document.getElementById('editNickname').value.trim();
       if (!nickname) return warn("닉네임을 입력해주세요.");
 
-      // 🚧 PATCH /api/auth/me {nickname}
-      profile.nickname = nickname;
-      profileModal.hide();
-      renderProfile();
-      ok("프로필이 수정되었습니다.");
+      try {
+        const response = await fetch('/api/auth/me', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            nickname: nickname
+          })
+        });
+
+        if (!response.ok) {
+          warn("프로필 수정에 실패했습니다.");
+          return;
+        }
+
+        profile.nickname = nickname;
+        profileModal.hide();
+        renderProfile();
+        ok("프로필이 수정되었습니다.");
+
+      } catch (error) {
+        warn("서버 통신 중 오류가 발생했습니다.");
+      }
     }
 
     // 비밀번호 변경
@@ -161,29 +181,39 @@
       document.getElementById('newPw').value = '';
       passwordModal.show();
     }
+
     function savePassword() {
       const currentPw = document.getElementById('currentPw').value;
       const newPw = document.getElementById('newPw').value;
+
       if (!currentPw || !newPw) return warn("모든 항목을 입력해주세요.");
       if (newPw.length < 8) return warn("새 비밀번호는 8자 이상이어야 합니다.");
 
-      // 🚧 PATCH /api/auth/password {currentPassword, newPassword}
-      //    서버가 현재 비번 확인 후 변경. 틀리면 에러 메시지.
+      // TODO: 백엔드 비밀번호 변경 API 구현 후 연결
+      // 프론트 예상: PATCH /api/auth/password
+      // body: { currentPassword: currentPw, newPassword: newPw }
       passwordModal.hide();
-      ok("비밀번호가 변경되었습니다.");
+      ok("비밀번호 변경 API가 아직 연결되지 않았습니다.");
     }
 
     // 로그아웃
     function handleLogout() {
       Swal.fire({
-        text: "로그아웃 하시겠습니까?", icon: "question",
-        buttonsStyling: false, showCancelButton: true,
-        confirmButtonText: "로그아웃", cancelButtonText: "취소",
-        customClass: { confirmButton: "btn btn-primary", cancelButton: "btn btn-light" }
+        text: "로그아웃 하시겠습니까?",
+        icon: "question",
+        buttonsStyling: false,
+        showCancelButton: true,
+        confirmButtonText: "로그아웃",
+        cancelButtonText: "취소",
+        customClass: {
+          confirmButton: "btn btn-primary",
+          cancelButton: "btn btn-light"
+        }
       }).then(result => {
         if (result.isConfirmed) {
-          // 🚧 POST /api/auth/logout (토큰 무효화)
-          document.cookie = 'token=; path=/; max-age=0';  // 쿠키 제거
+          // 현재는 백엔드 로그아웃 엔드포인트 없음.
+          // 쿠키/토큰은 클라이언트에서 제거.
+          document.cookie = 'token=; path=/; max-age=0';
           location.href = '/';
         }
       });
@@ -192,33 +222,65 @@
     // 회원 탈퇴
     function handleWithdraw() {
       Swal.fire({
-        text: "정말 탈퇴하시겠습니까? 모든 데이터(할일·농장)가 삭제됩니다.",
-        icon: "warning", buttonsStyling: false, showCancelButton: true,
-        confirmButtonText: "탈퇴", cancelButtonText: "취소",
-        customClass: { confirmButton: "btn btn-danger", cancelButton: "btn btn-light" }
-      }).then(result => {
-        if (result.isConfirmed) {
-          // 🚧 DELETE /api/auth/me
+        text: "정말 탈퇴하시겠습니까? 계정이 비활성화됩니다.",
+        icon: "warning",
+        buttonsStyling: false,
+        showCancelButton: true,
+        confirmButtonText: "탈퇴",
+        cancelButtonText: "취소",
+        customClass: {
+          confirmButton: "btn btn-danger",
+          cancelButton: "btn btn-light"
+        }
+      }).then(async result => {
+        if (!result.isConfirmed) return;
+
+        try {
+          const response = await fetch('/api/auth/me', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            warn("탈퇴 처리에 실패했습니다.");
+            return;
+          }
+
           document.cookie = 'token=; path=/; max-age=0';
+
           Swal.fire({
-            text: "탈퇴가 완료되었습니다.", icon: "success",
-            buttonsStyling: false, confirmButtonText: "확인",
+            text: "탈퇴가 완료되었습니다.",
+            icon: "success",
+            buttonsStyling: false,
+            confirmButtonText: "확인",
             customClass: { confirmButton: "btn btn-primary" }
           }).then(() => location.href = '/');
+
+        } catch (error) {
+          warn("서버 통신 중 오류가 발생했습니다.");
         }
       });
     }
 
     function warn(msg) {
       Swal.fire({
-        text: msg, icon: "warning", buttonsStyling: false,
-        confirmButtonText: "확인", customClass: { confirmButton: "btn btn-primary" }
+        text: msg,
+        icon: "warning",
+        buttonsStyling: false,
+        confirmButtonText: "확인",
+        customClass: { confirmButton: "btn btn-primary" }
       });
     }
+
     function ok(msg) {
       Swal.fire({
-        text: msg, icon: "success", buttonsStyling: false,
-        confirmButtonText: "확인", customClass: { confirmButton: "btn btn-primary" }
+        text: msg,
+        icon: "success",
+        buttonsStyling: false,
+        confirmButtonText: "확인",
+        customClass: { confirmButton: "btn btn-primary" }
       });
     }
   </script>
