@@ -74,4 +74,19 @@ public class TbFarm extends BaseEntity {
     public void earnCoin(int amount) {
         if (amount > 0) coin += amount;
     }
+    
+    /** 허수아비 방어 1회 소모. 남아있으면 true(방어 성공). */
+    public boolean useScarecrow() {
+        if (scarecrowLeft > 0) {
+            scarecrowLeft--;
+            return true;
+        }
+        return false;
+    }
+    
+    /** 허수아비 비축(구매). */
+    public void addScarecrow(int count) {
+        if (count > 0) scarecrowLeft += count;
+    }
+    
 }

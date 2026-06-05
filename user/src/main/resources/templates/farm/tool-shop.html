@@ -32,26 +32,36 @@
   <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
   <script th:src="@{/js/scripts.bundle.js}"></script>
   <script>
-    // 🚧 더미. API(/api/farm/shop/tools) 나오면 교체.
-    let coin = 240;
-    let tools = [
-      {
-        toolId: 1, name: '허수아비', emoji: '🧑‍🌾', price: 100, stock: 5, dailyLimit: 2, boughtToday: 0,
-        effect: '병해충으로부터 밭을 방어해요'
-      },
-      {
-        toolId: 2, name: '비료', emoji: '💩', price: 60, stock: 20, dailyLimit: 5, boughtToday: 1,
-        effect: '작물 성장 속도를 높여줘요'
-      },
-      {
-        toolId: 3, name: '온실', emoji: '🏡', price: 200, stock: 2, dailyLimit: 1, boughtToday: 0,
-        effect: '날씨와 상관없이 작물을 지켜요'
-      },
-    ];
+    // ✅ 서버 권위. coin·재고·효과 전부 서버 처리. (프론트 더미·직접차감 금지)
+    let coin = 0;
+    let tools = [];
+
+    const EFFECT_TEXT = {
+      scarecrow: '병해충/시듦으로부터 밭을 방어해요 (방어 횟수 비축)',
+      fertilizer: '고른 작물의 남은 물주기를 즉시 단축해요',
+      greenhouse: '오늘 하루 농장을 날씨/시듦으로부터 지켜요'
+    };
+    const TOOL_EMOJI = { scarecrow: '🧑\u200d🌾', fertilizer: '💩', greenhouse: '🏡' };
 
     document.addEventListener('DOMContentLoaded', function () {
-      render();
+      loadShop();
     });
+
+    async function loadShop() {
+      try {
+        const farmRes = await fetch('/api/farm', { headers: { 'Accept': 'application/json' } });
+        const farmBody = await farmRes.json();
+        coin = (farmBody.data ?? farmBody).coin ?? 0;
+
+        const res = await fetch('/api/shop/tools', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('상점을 불러오지 못했어요.');
+        const body = await res.json();
+        tools = (body.data ?? body) || [];
+        render();
+      } catch (e) {
+        warn(e.message || '상점을 불러오지 못했어요.');
+      }
+    }
 
     function render() {
       document.getElementById('coin').textContent = coin;
@@ -59,31 +69,33 @@
       box.innerHTML = '';
 
       tools.forEach(t => {
-        const remaining = t.dailyLimit - t.boughtToday;
         const soldOut = t.stock <= 0;
-        const limitReached = remaining <= 0;
         const tooPoor = coin < t.price;
-        const disabled = soldOut || limitReached || tooPoor;
+        const locked = t.locked;
+        const disabled = soldOut || tooPoor || locked;
 
         let btnLabel = `🪙 ${t.price}`;
-        if (soldOut) btnLabel = '품절';
-        else if (limitReached) btnLabel = '오늘 마감';
+        if (locked) btnLabel = `🔒 Lv ${t.unlockLevel}`;
+        else if (soldOut) btnLabel = '품절';
         else if (tooPoor) btnLabel = '코인 부족';
+
+        const effect = EFFECT_TEXT[t.type] || '';
+        const emoji = TOOL_EMOJI[t.type] || '🛠️';
 
         const card = document.createElement('div');
         card.className = 'card shadow-sm';
         card.innerHTML = `
             <div class="card-body py-3">
-                <div class="d-flex align-items-start gap-3">
-                    <div style="font-size:36px;">${t.emoji}</div>
+                <div class="d-flex align-items-start gap-3 ${locked ? 'opacity-50' : ''}">
+                    <div style="font-size:36px;">${emoji}</div>
                     <div class="flex-grow-1">
-                        <div class="fw-bold fs-6 text-gray-800">${t.name}</div>
-                        <div class="fs-8 text-gray-500 mb-2">${t.effect}</div>
+                        <div class="fw-bold fs-6 text-gray-800">${t.name}
+                          ${locked ? `<span class="badge badge-sm badge-light-danger ms-1">Lv ${t.unlockLevel} 해금</span>` : ''}
+                        </div>
+                        <div class="fs-8 text-gray-500 mb-2">${effect}</div>
                         <div class="d-flex gap-2">
                             <span class="badge badge-sm badge-light-secondary">재고 ${soldOut ? 0 : t.stock}</span>
-                            <span class="badge badge-sm ${remaining > 0 ? 'badge-light-primary' : 'badge-light-danger'}">
-                                오늘 ${remaining > 0 ? remaining + '개 남음' : '구매 마감'}
-                            </span>
+                            ${t.uses > 1 ? `<span class="badge badge-sm badge-light-info">${t.uses}회</span>` : ''}
                         </div>
                     </div>
                     <button class="btn btn-sm ${disabled ? 'btn-light text-gray-400' : 'btn-primary'}"
@@ -98,35 +110,97 @@
       });
     }
 
-    function buyTool(toolId) {
+    async function buyTool(toolId) {
       const t = tools.find(x => x.toolId === toolId);
       if (!t) return;
+      if (t.locked) return warn(`Lv ${t.unlockLevel}부터 살 수 있어요.`);
+      if (coin < t.price) return warn('코인이 부족해요!');
+      if (t.stock <= 0) return warn('품절된 도구예요.');
 
-      // 사전 체크 (실제 검증은 서버 권위)
-      if (coin < t.price) return warn("코인이 부족해요!");
-      if (t.stock <= 0) return warn("품절된 도구예요.");
-      if (t.dailyLimit - t.boughtToday <= 0) return warn("오늘 구매 한도에 도달했어요.");
+      let targetPlotId = null;
 
-      // 🚧 POST /api/farm/shop/tools/{id}/buy
-      //    서버가 코인 차감·재고·한도 검증 후 효과 적용(허수아비 방어/비료/온실).
-      coin -= t.price;
-      t.stock--;
-      t.boughtToday++;
-      render();
+      // 비료는 대상 작물 선택 필요
+      if (t.type === 'fertilizer') {
+        targetPlotId = await pickCropForFertilizer();
+        if (!targetPlotId) return;   // 취소
+      }
 
-      Swal.fire({
-        html: `<b>${t.name}</b> 구매 완료!<br><span class="fs-7 text-gray-500">${t.effect}</span>`,
-        icon: "success", buttonsStyling: false, confirmButtonText: "확인",
-        customClass: { confirmButton: "btn btn-primary" }
+      try {
+        const res = await fetch(`/api/shop/tools/${toolId}/buy`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ targetPlotId })
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || body.result === false) {
+          throw new Error(body.message || '구매에 실패했어요.');
+        }
+
+        await loadShop();
+        Swal.fire({
+          html: `<b>${t.name}</b> 구매 완료!<br><span class="fs-7 text-gray-500">${EFFECT_TEXT[t.type] || ''}</span>`,
+          icon: 'success', buttonsStyling: false, confirmButtonText: '확인',
+          customClass: { confirmButton: 'btn btn-primary' }
+        });
+      } catch (e) {
+        warn(e.message);
+      }
+    }
+
+    // 비료 대상 작물 선택 (성장 중인 작물만) — Select2
+    async function pickCropForFertilizer() {
+      // 농장에서 growing 작물 목록 가져오기
+      let plots = [];
+      try {
+        const res = await fetch('/api/farm', { headers: { 'Accept': 'application/json' } });
+        const body = await res.json();
+        plots = ((body.data ?? body).plots || []).filter(p => p.status === 'growing');
+      } catch (e) {
+        warn('작물 정보를 불러오지 못했어요.');
+        return null;
+      }
+
+      if (!plots.length) {
+        warn('비료를 줄 수 있는 (자라는 중인) 작물이 없어요.');
+        return null;
+      }
+
+      const optionsHtml = plots.map(p =>
+        `<option value="${p.plotId}">${p.cropName || '작물'} (물 ${p.watered}/${p.total})</option>`
+      ).join('');
+
+      // value = plotId (백엔드가 밭 기준으로 그 밭의 작물에 비료 적용)
+      const { value: plotId } = await Swal.fire({
+        title: '어느 작물에 비료를 줄까요?',
+        html: `<select id="cropSelect" class="form-select" style="width:100%">
+                 <option></option>${optionsHtml}
+               </select>`,
+        showCancelButton: true, confirmButtonText: '주기', cancelButtonText: '취소',
+        buttonsStyling: false,
+        customClass: { confirmButton: 'btn btn-primary', cancelButton: 'btn btn-light' },
+        didOpen: () => {
+          $('#cropSelect').select2({
+            placeholder: '작물 선택',
+            dropdownParent: $('.swal2-popup'),
+            minimumResultsForSearch: Infinity
+          });
+        },
+        preConfirm: () => {
+          const v = $('#cropSelect').val();
+          if (!v) { Swal.showValidationMessage('작물을 골라주세요.'); return false; }
+          return v;
+        }
       });
+      return plotId || null;
     }
 
     function warn(msg) {
       Swal.fire({
-        text: msg, icon: "warning", buttonsStyling: false,
-        confirmButtonText: "확인", customClass: { confirmButton: "btn btn-primary" }
+        text: msg, icon: 'warning', buttonsStyling: false,
+        confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' }
       });
     }
+
   </script>
 </body>
 

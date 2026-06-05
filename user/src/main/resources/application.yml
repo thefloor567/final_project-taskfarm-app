@@ -40,3 +40,10 @@ management:
     health:
       probes:
         enabled: true
+        
+        
+#farm:
+#  wither-minutes: 1440      # 운영 기본 24시간(=1440분)
+  
+farm:
+  wither-minutes: 2         # 2분 뒤 시듦 (시연/테스트용)
