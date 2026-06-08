@@ -52,19 +52,12 @@
         <div class="card-body">
           <div class="row g-4 align-items-end">
             <div class="col-sm-4">
-              <label class="form-label fw-semibold text-gray-700">레벨업 시 물방울 (1단계)</label>
+              <label class="form-label fw-semibold text-gray-700">레벨업 시 물방울</label>
               <input type="number" id="levelUpWater1" class="form-control" min="0">
-            </div>
-            <div class="col-sm-4">
-              <label class="form-label fw-semibold text-gray-700">레벨업 시 물방울 (2단계)</label>
-              <input type="number" id="levelUpWater2" class="form-control" min="0">
             </div>
             <div class="col-sm-4">
               <button type="button" class="btn btn-primary w-100" onclick="saveLevelUp()">레벨업 보너스 저장</button>
             </div>
-          </div>
-          <div class="fs-8 text-gray-400 mt-3">
-            💧 2단계 지급: 레벨업 시 기본 물방울 + 추가 보너스 (명세서 "물방울 2단계 지급")
           </div>
         </div>
       </div>
@@ -80,19 +73,22 @@
       location.href = '/admin/';
     }
 
-    // 🚧 더미. API(GET /api/admin/policies/exp) 나오면 교체.
-    let policies = [
-      { policyId: 1, priority: 'A', label: 'A · 급함', completeXp: 30, completeWater: 3 },
-      { policyId: 2, priority: 'B', label: 'B · 보통', completeXp: 20, completeWater: 2 },
-      { policyId: 3, priority: 'C', label: 'C · 여유', completeXp: 10, completeWater: 1 },
-    ];
-    let levelUp = { water1: 5, water2: 10 };
+    let policies = [];
 
     document.addEventListener('DOMContentLoaded', function () {
-      renderTable();
-      document.getElementById('levelUpWater1').value = levelUp.water1;
-      document.getElementById('levelUpWater2').value = levelUp.water2;
+      fetch('/admin/api/policies/exp')
+        .then(res => res.json())
+        .then(res => {
+          policies = res.data;
+          renderTable();
+          // 레벨업 보너스는 A/B/C 모두 같은 값이므로 첫 번째 정책에서 가져옴
+          document.getElementById('levelUpWater1').value = policies[0]?.levelUpDrops ?? 5;
+        })
+        .catch(err => console.error(err));
     });
+
+    const LABEL = { A: 'A · 급함', B: 'B · 보통', C: 'C · 여유' };
+    const BADGE = { A: 'badge-light-danger', B: 'badge-light-warning', C: 'badge-light-secondary' };
 
     function renderTable() {
       const tbody = document.getElementById('expTableBody');
@@ -100,49 +96,53 @@
       policies.forEach(p => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>
-                <span class="badge badge-sm ${p.priority === 'A' ? 'badge-light-danger' : p.priority === 'B' ? 'badge-light-warning' : 'badge-light-secondary'
-          }">${p.label}</span>
-            </td>
-            <td>
-                <input type="number" class="form-control form-control-sm" min="0"
-                       value="${p.completeXp}" id="xp-${p.policyId}">
-            </td>
-            <td>
-                <input type="number" class="form-control form-control-sm" min="0"
-                       value="${p.completeWater}" id="water-${p.policyId}">
-            </td>
-            <td class="text-end">
-                <button class="btn btn-sm btn-light-primary" onclick="savePolicy(${p.policyId})">저장</button>
-            </td>
+          <td><span class="badge badge-sm ${BADGE[p.priority]}">${LABEL[p.priority]}</span></td>
+          <td><input type="number" class="form-control form-control-sm" min="0" value="${p.baseExp}" id="xp-${p.id}"></td>
+          <td><input type="number" class="form-control form-control-sm" min="0" value="${p.doneDrops}" id="water-${p.id}"></td>
+          <td class="text-end"><button class="btn btn-sm btn-light-primary" onclick="savePolicy(${p.id})">저장</button></td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    function savePolicy(policyId) {
-      const xp = parseInt(document.getElementById('xp-' + policyId).value);
-      const water = parseInt(document.getElementById('water-' + policyId).value);
+    function savePolicy(id) {
+      const baseExp = parseInt(document.getElementById('xp-' + id).value);
+      const doneDrops = parseInt(document.getElementById('water-' + id).value);
+      const p = policies.find(x => x.id === id);
 
-      if (isNaN(xp) || isNaN(water) || xp < 0 || water < 0) {
+      if (isNaN(baseExp) || isNaN(doneDrops) || baseExp < 0 || doneDrops < 0) {
         return warn("0 이상의 숫자를 입력해주세요.");
       }
 
-      // 🚧 PATCH /api/admin/policies/exp/{policyId} {completeXp, completeWater}
-      const p = policies.find(x => x.policyId === policyId);
-      p.completeXp = xp; p.completeWater = water;
-      ok("정책이 저장되었습니다.");
+      fetch(`/admin/api/policies/exp/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ baseExp, doneDrops, levelUpDrops: p.levelUpDrops })
+      })
+        .then(res => res.json())
+        .then(res => {
+          if (res.result) { ok("정책이 저장되었습니다."); }
+          else { warn(res.message || "저장 실패"); }
+        });
     }
 
     function saveLevelUp() {
-      const w1 = parseInt(document.getElementById('levelUpWater1').value);
-      const w2 = parseInt(document.getElementById('levelUpWater2').value);
-      if (isNaN(w1) || isNaN(w2) || w1 < 0 || w2 < 0) {
+      const levelUpDrops = parseInt(document.getElementById('levelUpWater1').value);
+      if (isNaN(levelUpDrops) || levelUpDrops < 0) {
         return warn("0 이상의 숫자를 입력해주세요.");
       }
-      // 🚧 PATCH /api/admin/policies/exp/levelup {water1, water2}  (엔드포인트는 백엔드와 협의)
-      levelUp.water1 = w1; levelUp.water2 = w2;
-      ok("레벨업 보너스가 저장되었습니다.");
+
+      // 모든 우선순위에 같은 levelUpDrops 적용
+      Promise.all(policies.map(p =>
+        fetch(`/admin/api/policies/exp/${p.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ baseExp: p.baseExp, doneDrops: p.doneDrops, levelUpDrops })
+        }).then(r => r.json())
+      )).then(() => {
+        policies.forEach(p => p.levelUpDrops = levelUpDrops);
+        ok("레벨업 보너스가 저장되었습니다.");
+      });
     }
 
     function warn(msg) {

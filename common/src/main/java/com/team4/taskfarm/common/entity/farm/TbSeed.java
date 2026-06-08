@@ -44,9 +44,15 @@ public class TbSeed extends BaseEntity {
     @Column(name = "IsActive", nullable = false)
     private boolean isActive = true;
 
-    // ✏️ TODO: 어드민 수정 메서드
-    
-    
+    /** 어드민 상점 정책 수정 (가격/보상/재고/하루한도). */
+    public void updatePolicy(int price, int reward, int stock, int dailyLimit) {
+        this.price = price;
+        this.reward = reward;
+        this.stock = stock;
+        this.dailyLimit = dailyLimit;
+    }
+
+
     /** 구매 가능 여부 검증 (판매중 + 재고). 수량만큼 재고 차감. */
     public void purchase(int qty) {
         if (!isActive) {

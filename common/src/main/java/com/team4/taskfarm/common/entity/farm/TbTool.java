@@ -47,8 +47,14 @@ public class TbTool extends BaseEntity {
 
     public enum ToolType { scarecrow, fertilizer, greenhouse }
 
-    // ✏️ TODO: 어드민 수정 메서드
-    
+    /** 어드민 상점 정책 수정 (가격/효과수치/재고/하루한도). */
+    public void updatePolicy(int price, int uses, int stock, int dailyLimit) {
+        this.price = price;
+        this.uses = uses;
+        this.stock = stock;
+        this.dailyLimit = dailyLimit;
+    }
+
     /** 구매 가능 여부 검증(판매중 + 재고) + 재고 1 차감. */
     public void purchase() {
         if (!isActive) {
