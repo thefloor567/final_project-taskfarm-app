@@ -38,6 +38,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    // JWT role 클레임 값과 정확히 일치하는 권한. hasRole의 암묵적 ROLE_ 프리픽스에 의존하지 않도록 hasAuthority로 명시.
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
+
     private final JwtService jwtService;
 
     @Bean
@@ -49,8 +52,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // 로그인 페이지 + 로그인 API + 정적 리소스는 누구나 접근 가능
                 .requestMatchers("/", "/api/login", "/css/**", "/js/**", "/plugins/**", "/media/**", "/webjars/**").permitAll()
-                // 나머지는 ROLE_ADMIN 만
-                .anyRequest().hasRole("ADMIN")
+                // 나머지는 ROLE_ADMIN 만 (JwtFilter가 넣는 권한 문자열과 정확히 일치)
+                .anyRequest().hasAuthority(ROLE_ADMIN)
             )
             .addFilterBefore(new JwtFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
 

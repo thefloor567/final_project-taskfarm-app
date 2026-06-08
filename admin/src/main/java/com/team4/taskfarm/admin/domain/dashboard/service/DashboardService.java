@@ -23,8 +23,10 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public DashboardResponse getAdminHome() {
+        LocalDate today = LocalDate.now();
         long totalUsers = userRepository.count();
-        long todayUsers = userRepository.countTodaySignups();
+        long todayUsers = userRepository.countTodaySignups(
+                today.atStartOfDay(), today.plusDays(1).atStartOfDay());
         long totalTodos = todoRepository.count();
         long completedTodos = todoRepository.countByIsDoneTrue();
         double rate = totalTodos > 0
@@ -42,7 +44,6 @@ public class DashboardService {
 
         List<String> labels = new ArrayList<>();
         List<Long> data = new ArrayList<>();
-        LocalDate today = LocalDate.now();
         for (int i = 6; i >= 0; i--) {
             String label = today.minusDays(i).format(formatter);
             labels.add(label);
