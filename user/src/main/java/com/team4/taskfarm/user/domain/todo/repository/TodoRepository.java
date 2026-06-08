@@ -41,4 +41,6 @@ public interface TodoRepository extends JpaRepository<TbTodo, Long>{
 	List<TbTodo> findByIdxUserAndDeleteDateIsNullOrderByCreateDateDesc(Long idxUser);
 
 	Optional<TbTodo> findByIdxUserAndIdxTodoAndDeleteDateIsNull(Long idxUser, Long idxTodo);
+
+	Optional<TbTodo> findByIdxTodoAndIdxUserAndDeleteDateIsNull(Long idxTodo, Long idxUser);
 }
