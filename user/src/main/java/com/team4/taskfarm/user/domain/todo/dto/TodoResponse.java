@@ -19,6 +19,9 @@ public class TodoResponse {
 	private String content;
 	private TbTodo.Priority priority;
 	
+	// 카테고리 이름을 출력하기 위해 사용
+	private String categoryName;
+	
 	private boolean isDone;
 	
 	private LocalDateTime dueDate;
@@ -27,7 +30,7 @@ public class TodoResponse {
 	private LocalDateTime updateDate;
 	
 	// DB에서 가져온 TbTodo 엔티티를 TodoResponse DTO로 바꿔주는 메서드
-	public static TodoResponse from(TbTodo todo) {
+	public static TodoResponse from(TbTodo todo, String categoryName) {
 		return TodoResponse.builder()
 						.idxTodo(todo.getIdxTodo())
 						.idxUser(todo.getIdxUser())
@@ -35,6 +38,7 @@ public class TodoResponse {
 						.title(todo.getTitle())
 						.content(todo.getContent())
 						.priority(todo.getPriority())
+						.categoryName(categoryName)
 						.isDone(todo.isDone())
 						.dueDate(todo.getDueDate())
 						.completeDate(todo.getCompleteDate())

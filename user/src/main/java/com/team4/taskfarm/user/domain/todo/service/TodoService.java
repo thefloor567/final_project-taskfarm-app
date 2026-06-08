@@ -3,12 +3,16 @@ package com.team4.taskfarm.user.domain.todo.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team4.taskfarm.common.entity.todo.TbTodo;
 import com.team4.taskfarm.common.exception.CustomException;
+import com.team4.taskfarm.user.domain.category.entity.Category;
+import com.team4.taskfarm.user.domain.category.repository.CategoryRepository;
 import com.team4.taskfarm.user.domain.todo.dto.TodoRequest;
 import com.team4.taskfarm.user.domain.todo.dto.TodoResponse;
 import com.team4.taskfarm.user.domain.todo.repository.TodoRepository;
@@ -20,6 +24,9 @@ import lombok.RequiredArgsConstructor;
 public class TodoService {
 	
 	private final TodoRepository todoRepository;
+	
+	// 카테고리 이름 조회용
+	private final CategoryRepository categoryRepository;
 	
 	// 할일 가져오기
 	@Transactional(readOnly = true)
@@ -77,10 +84,21 @@ public class TodoService {
 			}
 		}
 		
-		return todo.stream()
-					.map(TodoResponse::from)
-					.toList();
-	}
+		// 현재 유저의 카테고리 목록을 한 번만 조회해서
+        // idxCat -> categoryName 형태의 Map으로 변환한다.
+        // Todo마다 categoryRepository를 호출하면 N+1처럼 조회가 많아질 수 있어서 이 방식이 더 낫다.
+        Map<Long, String> categoryNameMap = categoryRepository.findByIdxUserAndDeleteDateIsNull(idxUser)
+                .stream()
+                .collect(Collectors.toMap(
+                        Category::getIdxCat,
+                        Category::getName
+                ));
+
+        // TodoResponse에 categoryName까지 포함해서 반환한다.
+        return todo.stream()
+                .map(t -> TodoResponse.from(t, getCategoryNameFromMap(t.getIdxCat(), categoryNameMap)))
+                .toList();
+    }
 	
 	// 할일 생성 (엔티티로 바꿔서 repo에 저장)
 	@Transactional
@@ -95,7 +113,8 @@ public class TodoService {
 		);
 		
 		TbTodo savedTodo = todoRepository.save(todo);
-		return TodoResponse.from(savedTodo);
+		String categoryName = getCategoryName(idxUser, savedTodo.getIdxCat());
+		return TodoResponse.from(savedTodo, categoryName);
 	}
 	
 	// findTodo에서 찾아오고 업데이트
@@ -103,7 +122,8 @@ public class TodoService {
 	public TodoResponse updateTodo(Long idxUser, Long idxTodo, TodoRequest request) {
 		TbTodo todo = findTodo(idxUser, idxTodo);
 		todo.update(request.getIdxCat(), request.getTitle(), request.getContent(), request.getPriority(), request.getDueDate());
-		return TodoResponse.from(todo);
+		String categoryName = getCategoryName(idxUser, todo.getIdxCat());
+		return TodoResponse.from(todo, categoryName);
 	}
 	
 	// findTodo에서 찾아오고 지우기
@@ -119,7 +139,8 @@ public class TodoService {
 		// 완료 시 xp 적립 + 물방울 소량 지급 이거 구현 아직 안함
 		TbTodo todo = findTodo(idxUser, idxTodo);
 		todo.complete();
-		return TodoResponse.from(todo);
+		String categoryName = getCategoryName(idxUser, todo.getIdxCat());
+		return TodoResponse.from(todo, categoryName);
 	}
 	
 	// repo에서 idxUser와 idxTodo로 해당 사용자의 할일 찾아오기
@@ -128,4 +149,25 @@ public class TodoService {
 								.orElseThrow(() -> CustomException.notFound("할일을 찾을 수 없습니다."));
 	}
 	
+	// 목록 조회에서 사용할 카테고리 이름 추출 => 하나씩 추출하게 될 경우 양이 너무 많아질 수 있음. 그래서 현재 유저의 카테고리를 한번에 가져오기
+	private String getCategoryNameFromMap(Long idxCat, Map<Long, String> categoryNameMap) {
+		if (idxCat == null) {
+			return "미분류";
+		}
+		
+		// idxCat은 있는데, 조회 결과가 없음 => 삭제된 카테고리
+		return categoryNameMap.getOrDefault(idxCat, "미분류");
+	}
+	
+	// 단건 처리에서 사용할 카테고리 이름 조회
+	private String getCategoryName(Long idxUser, Long idxCat) {
+		if (idxCat == null) {
+			return "미분류";
+		}
+		
+		return categoryRepository
+				.findByIdxCatAndIdxUserAndDeleteDateIsNull(idxCat, idxUser)
+				.map(Category::getName)
+				.orElse("미분류");
+	}
 }

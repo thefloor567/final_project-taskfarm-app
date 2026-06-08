@@ -34,7 +34,7 @@ public class TodoApiController extends UserBaseController {
 	// 할일 목록 조회
 	@GetMapping
 	public ResponseEntity<ApiResponse<List<TodoResponse>>> getTodoList(
-			@RequestParam(required = false, defaultValue = "false") Boolean isDone,
+			@RequestParam(required = false) Boolean isDone, // defaultValue = "false" 삭제함 => 전체 조회를 하는데 default 설정 때문에 false인 것만 조회됨
 	        @RequestParam(required = false) Long idxCat,
 	        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDate
 			){

@@ -43,4 +43,15 @@ public class TbAiLog {
     @CreatedDate
     @Column(name = "CreateDate", updatable = false)
     private LocalDateTime createDate;
+    
+    // 값을 넣어서 객체를 만드는 메서드
+    public static TbAiLog create(Long idxUser, Long idxTodo, int rewardExp, boolean isCache, Integer token) {
+        TbAiLog log = new TbAiLog();
+        log.idxUser = idxUser;
+        log.idxTodo = idxTodo;
+        log.rewardExp = rewardExp;
+        log.isCache = isCache;
+        log.token = token;
+        return log;
+    }
 }

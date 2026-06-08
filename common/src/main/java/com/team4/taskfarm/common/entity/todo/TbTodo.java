@@ -38,7 +38,7 @@ public class TbTodo extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "Priority", nullable = false)
     private Priority priority = Priority.C;
-
+    
     @Column(name = "IsDone", nullable = false)
     private boolean isDone = false;
 
@@ -50,7 +50,7 @@ public class TbTodo extends BaseEntity {
 
     @Column(name = "DeleteDate")
     private LocalDateTime deleteDate;
-
+    
     public enum Priority { A, B, C }
 
     // ✏️ TODO: complete(), update 메서드
@@ -97,6 +97,4 @@ public class TbTodo extends BaseEntity {
         todo.dueDate = dueDate;
         return todo;
     }
-
-
 }
