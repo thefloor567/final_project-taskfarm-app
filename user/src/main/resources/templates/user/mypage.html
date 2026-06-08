@@ -118,19 +118,51 @@
     let profileModal = null;
     let passwordModal = null;
 
-    // TODO: GET /api/auth/me 연동 전 임시 데이터
+    // 화면이 처음 뜰 때 잠깐 보여줄 기본값.
+    // 이후 loadProfile()이 GET /api/auth/me로 DB 값을 받아와 덮어쓴다.
     let profile = {
-      nickname: '초록농부',
-      email: 'farmer@taskfarm.com',
-      level: 5,
-      joinDays: 23
+      nickname: '농부',
+      email: 'email@example.com',
+      level: 1,
+      joinDays: 0
     };
 
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', async function () {
       profileModal = new bootstrap.Modal(document.getElementById('profileModal'));
       passwordModal = new bootstrap.Modal(document.getElementById('passwordModal'));
-      renderProfile();
+
+      // 현재는 테스트용으로도 동작 가능.
+      // 단, 백엔드 AuthApiController#getProfile()이 getCurrentUserIdx()를 쓰면 JWT 미연동 상태에서 실패할 수 있음.
+      await loadProfile();
     });
+
+    async function loadProfile() {
+      try {
+        const response = await fetch('/api/auth/me');
+
+        if (!response.ok) {
+          warn("프로필 정보를 불러오지 못했습니다.");
+          renderProfile();
+          return;
+        }
+
+        const result = await response.json();
+
+        // 공통 응답 구조: { result, message, data } 기준
+        if (result.data) {
+          profile.nickname = result.data.nickname;
+          profile.email = result.data.email;
+          profile.level = result.data.level;
+          profile.joinDays = result.data.joinDays || 0;
+        }
+
+        renderProfile();
+
+      } catch (error) {
+        warn("서버 통신 중 오류가 발생했습니다.");
+        renderProfile();
+      }
+    }
 
     function renderProfile() {
       document.getElementById('nickname').textContent = profile.nickname;
@@ -165,6 +197,7 @@
           return;
         }
 
+        // 수정 성공 후 화면도 바로 반영
         profile.nickname = nickname;
         profileModal.hide();
         renderProfile();
@@ -190,8 +223,9 @@
       if (newPw.length < 8) return warn("새 비밀번호는 8자 이상이어야 합니다.");
 
       // TODO: 백엔드 비밀번호 변경 API 구현 후 연결
-      // 프론트 예상: PATCH /api/auth/password
+      // 예상 API: PATCH /api/auth/password
       // body: { currentPassword: currentPw, newPassword: newPw }
+      // 현재는 JWT 인증 모듈 연동 전이므로 실제 현재 유저 식별 테스트가 어려워 보류.
       passwordModal.hide();
       ok("비밀번호 변경 API가 아직 연결되지 않았습니다.");
     }

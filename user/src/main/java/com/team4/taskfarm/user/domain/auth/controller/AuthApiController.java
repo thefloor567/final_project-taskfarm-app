@@ -34,18 +34,30 @@ public class AuthApiController extends UserBaseController {
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getProfile() {
-        return ok(authService.getProfile(getCurrentUserIdx()));
+        // TODO 최종버전: JWT/Auth 공통모듈 연동 후 아래 코드로 교체
+        // return ok(authService.getProfile(getCurrentUserIdx()));
+
+        // 테스트용: 실제 DB에 존재하는 Idx_User 값으로 바꿔서 테스트
+        return ok(authService.getProfile(1L));
     }
 
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<Void>> updateProfile(@RequestBody UpdateProfileRequest req) {
-        authService.updateProfile(getCurrentUserIdx(), req);
+        // TODO 최종버전: JWT/Auth 공통모듈 연동 후 아래 코드로 교체
+        // authService.updateProfile(getCurrentUserIdx(), req);
+
+        // 테스트용: 실제 DB에 존재하는 Idx_User 값으로 바꿔서 테스트
+        authService.updateProfile(1L, req);
         return ok();
     }
 
     @DeleteMapping("/me")
     public ResponseEntity<ApiResponse<Void>> withdraw() {
-        authService.withdraw(getCurrentUserIdx());
+        // TODO 최종버전: JWT/Auth 공통모듈 연동 후 아래 코드로 교체
+        // authService.withdraw(getCurrentUserIdx());
+
+        // 테스트용: 실제 DB에 존재하는 Idx_User 값으로 바꿔서 테스트
+        authService.withdraw(1L);
         return ok();
     }
 }
