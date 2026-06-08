@@ -19,7 +19,7 @@ public class ExpPolicyService {
 
     @Transactional(readOnly = true)
     public List<ExpPolicyResponse> getAll() {
-        return expPolicyRepository.findAll().stream()
+        return expPolicyRepository.findAllByOrderByPriorityAsc().stream()
                 .map(ExpPolicyResponse::new)
                 .collect(Collectors.toList());
     }

@@ -1,7 +1,8 @@
 package com.team4.taskfarm.admin.domain.policy.service;
 
+import com.team4.taskfarm.admin.domain.policy.dto.SeedPolicyRequest;
 import com.team4.taskfarm.admin.domain.policy.dto.SeedPolicyResponse;
-import com.team4.taskfarm.admin.domain.policy.dto.ShopPolicyRequest;
+import com.team4.taskfarm.admin.domain.policy.dto.ToolPolicyRequest;
 import com.team4.taskfarm.admin.domain.policy.dto.ToolPolicyResponse;
 import com.team4.taskfarm.admin.domain.policy.repository.SeedRepository;
 import com.team4.taskfarm.admin.domain.policy.repository.ToolRepository;
@@ -22,20 +23,20 @@ public class ShopPolicyService {
 
     @Transactional(readOnly = true)
     public List<SeedPolicyResponse> getSeeds() {
-        return seedRepository.findAll().stream()
+        return seedRepository.findAllByOrderByIdxSeedAsc().stream()
                 .map(SeedPolicyResponse::new)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<ToolPolicyResponse> getTools() {
-        return toolRepository.findAll().stream()
+        return toolRepository.findAllByOrderByIdxToolAsc().stream()
                 .map(ToolPolicyResponse::new)
                 .collect(Collectors.toList());
     }
 
     @Transactional
-    public SeedPolicyResponse updateSeed(Long id, ShopPolicyRequest request) {
+    public SeedPolicyResponse updateSeed(Long id, SeedPolicyRequest request) {
         var seed = seedRepository.findById(id)
                 .orElseThrow(() -> CustomException.notFound("씨앗을 찾을 수 없습니다."));
         seed.updatePolicy(request.getPrice(), request.getReward(), request.getStock(), request.getDailyLimit());
@@ -43,11 +44,10 @@ public class ShopPolicyService {
     }
 
     @Transactional
-    public ToolPolicyResponse updateTool(Long id, ShopPolicyRequest request) {
+    public ToolPolicyResponse updateTool(Long id, ToolPolicyRequest request) {
         var tool = toolRepository.findById(id)
                 .orElseThrow(() -> CustomException.notFound("도구를 찾을 수 없습니다."));
-        // 도구는 reward 자리에 효과수치(uses)가 들어옴
-        tool.updatePolicy(request.getPrice(), request.getReward(), request.getStock(), request.getDailyLimit());
+        tool.updatePolicy(request.getPrice(), request.getUses(), request.getStock(), request.getDailyLimit());
         return new ToolPolicyResponse(tool);
     }
 }

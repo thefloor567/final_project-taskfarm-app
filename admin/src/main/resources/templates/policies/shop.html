@@ -127,11 +127,15 @@
 
       const it = items[currentTab].find(x => x.itemId === itemId);
       const endpoint = currentTab === 'seeds' ? 'seeds' : 'tools';
+      // 씨앗은 reward, 도구는 uses(효과수치)로 키가 다름
+      const body = currentTab === 'seeds'
+        ? { price, reward, stock, dailyLimit: limit }
+        : { price, uses: reward, stock, dailyLimit: limit };
 
       fetch(`/admin/api/policies/shop/${endpoint}/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ price, reward, stock, dailyLimit: limit })
+        body: JSON.stringify(body)
       })
         .then(res => res.json())
         .then(res => {
