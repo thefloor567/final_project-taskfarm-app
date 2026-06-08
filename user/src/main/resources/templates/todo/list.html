@@ -19,23 +19,55 @@
 
         <!-- 상태 필터 탭 -->
         <div class="d-flex gap-2" id="statusFilter">
-          <button type="button" class="btn btn-sm btn-primary flex-fill filter-btn" data-status="ALL"
-            onclick="selectStatus(this)">전체</button>
-          <button type="button" class="btn btn-sm btn-light flex-fill filter-btn" data-status="TODO"
-            onclick="selectStatus(this)">진행중</button>
-          <button type="button" class="btn btn-sm btn-light flex-fill filter-btn" data-status="DONE"
-            onclick="selectStatus(this)">완료</button>
+          <button
+            type="button"
+            class="btn btn-sm btn-primary flex-fill filter-btn"
+            data-status="ALL"
+            onclick="selectStatus(this)"
+          >
+            전체
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-sm btn-light flex-fill filter-btn"
+            data-status="TODO"
+            onclick="selectStatus(this)"
+          >
+            진행중
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-sm btn-light flex-fill filter-btn"
+            data-status="DONE"
+            onclick="selectStatus(this)"
+          >
+            완료
+          </button>
         </div>
 
-        <!-- 카테고리 필터 (가로 스크롤 칩) -->
-        <div class="d-flex gap-2 overflow-auto pb-1" id="categoryFilter" style="white-space: nowrap;">
-          <button type="button" class="btn btn-sm btn-light-primary cat-chip active-cat" data-cat="ALL"
-            onclick="selectCategory(this)">전체</button>
-          <!-- 카테고리는 JS로 /api/categories에서 채움 (지금은 더미) -->
+        <!-- 카테고리 필터 -->
+        <div
+          class="d-flex gap-2 overflow-auto pb-1"
+          id="categoryFilter"
+          style="white-space: nowrap;"
+        >
+          <button
+            type="button"
+            class="btn btn-sm btn-light-primary cat-chip active-cat"
+            data-cat="ALL"
+            onclick="selectCategory(this)"
+          >
+            전체
+          </button>
         </div>
 
         <!-- 할일 없을 때 -->
-        <div id="emptyState" class="d-flex flex-column align-items-center justify-content-center gap-3 py-20 d-none">
+        <div
+          id="emptyState"
+          class="d-flex flex-column align-items-center justify-content-center gap-3 py-20 d-none"
+        >
           <span style="font-size: 48px;">📝</span>
           <span class="fs-5 fw-semibold text-gray-500">할일이 없어요</span>
           <span class="fs-7 text-gray-400">오른쪽 아래 버튼으로 할일을 추가해보세요!</span>
@@ -47,7 +79,7 @@
       </div>
     </div>
 
-    <!-- 추가 버튼 (할일 작성으로) -->
+    <!-- 추가 버튼 -->
     <div th:replace="~{fragments/navbar :: btn-add('/todo/add')}"></div>
 
     <div th:replace="~{fragments/navbar :: navbar-main('todo')}"></div>
@@ -56,57 +88,99 @@
 
   <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
   <script th:src="@{/js/scripts.bundle.js}"></script>
+
   <script>
-    // 🚧 퍼블리싱 단계: 더미 데이터. API(/api/todos) 나오면 loadTodos()로 교체.
     let currentStatus = 'ALL';
     let currentCat = 'ALL';
 
-    // 더미 할일
-    const dummyTodos = [
-      {
-        todoId: 1, title: '운동 30분 하기', priority: 'A', categoryName: '건강',
-        categoryColor: '#1BC5BD', dueDate: '2026-06-05', done: false
-      },
-      {
-        todoId: 2, title: '리액트 강의 듣기', priority: 'B', categoryName: '공부',
-        categoryColor: '#3699FF', dueDate: '2026-06-06', done: false
-      },
-      {
-        todoId: 3, title: '장보기', priority: 'C', categoryName: '집안일',
-        categoryColor: '#FFA800', dueDate: '2026-06-05', done: true
-      },
-    ];
-    const dummyCats = [
-      { name: '건강', color: '#1BC5BD' },
-      { name: '공부', color: '#3699FF' },
-      { name: '집안일', color: '#FFA800' },
-    ];
+    let todos = [];
+    let categories = [];
 
     document.addEventListener('DOMContentLoaded', function () {
-      // 오늘 날짜
-      const t = new Date();
-      document.getElementById('todayLabel').textContent =
-        `${t.getMonth() + 1}월 ${t.getDate()}일`;
+      const today = new Date();
 
-      renderCategoryChips(dummyCats);
-      renderTodos();
+      document.getElementById('todayLabel').textContent =
+        `${today.getMonth() + 1}월 ${today.getDate()}일`;
+
+      loadCategories();
+      loadTodos();
     });
 
-    // 우선순위 뱃지 색 (A=빨강 급함 / B=노랑 / C=회색)
-    function priorityBadge(p) {
-      const map = { A: 'badge-light-danger', B: 'badge-light-warning', C: 'badge-light-secondary' };
-      return `<span class="badge badge-sm ${map[p] || 'badge-light-secondary'}">우선순위 ${p}</span>`;
+    function priorityBadge(priority) {
+      const map = {
+        A: 'badge-light-danger',
+        B: 'badge-light-warning',
+        C: 'badge-light-secondary'
+      };
+
+      return `
+        <span class="badge badge-sm ${map[priority] || 'badge-light-secondary'}">
+          우선순위 ${priority}
+        </span>
+      `;
+    }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/category');
+        const body = await res.json();
+
+        categories = body.data || body || [];
+        renderCategoryChips(categories);
+
+      } catch (e) {
+        console.error('카테고리 조회 실패', e);
+
+        categories = [];
+        renderCategoryChips(categories);
+      }
+    }
+
+    async function loadTodos() {
+      try {
+        const params = new URLSearchParams();
+
+        if (currentStatus === 'TODO') {
+          params.set('isDone', 'false');
+        }
+
+        if (currentStatus === 'DONE') {
+          params.set('isDone', 'true');
+        }
+
+        const queryString = params.toString();
+        const url = queryString ? `/api/todos?${queryString}` : '/api/todos';
+
+        const res = await fetch(url);
+        const body = await res.json();
+
+        todos = body.data || [];
+        renderTodos();
+
+      } catch (e) {
+        console.error('할일 목록 조회 실패', e);
+
+        todos = [];
+        renderTodos();
+      }
     }
 
     function renderCategoryChips(cats) {
       const box = document.getElementById('categoryFilter');
-      cats.forEach(c => {
+
+      box.querySelectorAll('.cat-chip:not([data-cat="ALL"])').forEach(el => {
+        el.remove();
+      });
+
+      cats.forEach(category => {
         const btn = document.createElement('button');
+
         btn.type = 'button';
         btn.className = 'btn btn-sm btn-light cat-chip';
-        btn.dataset.cat = c.name;
-        btn.textContent = c.name;
+        btn.dataset.cat = category.name;
+        btn.textContent = category.name;
         btn.onclick = () => selectCategory(btn);
+
         box.appendChild(btn);
       });
     }
@@ -114,102 +188,139 @@
     function renderTodos() {
       const container = document.getElementById('todoContainer');
       const empty = document.getElementById('emptyState');
+
       container.innerHTML = '';
 
-      // 필터 적용
-      let list = dummyTodos.filter(t => {
-        const statusOk = currentStatus === 'ALL'
-          || (currentStatus === 'DONE' ? t.done : !t.done);
-        const catOk = currentCat === 'ALL' || t.categoryName === currentCat;
-        return statusOk && catOk;
+      const list = todos.filter(todo => {
+        return currentCat === 'ALL' || todo.categoryName === currentCat;
       });
 
       if (list.length === 0) {
         empty.classList.remove('d-none');
         return;
       }
+
       empty.classList.add('d-none');
 
-      list.forEach(t => {
+      list.forEach(todo => {
         const card = document.createElement('div');
+
         card.className = 'card shadow-sm';
         card.style.cursor = 'pointer';
-        card.onclick = (e) => {
-          if (e.target.closest('.todo-check')) return; // 체크 클릭은 제외
-          location.href = `/todo/detail/${t.todoId}`;
+
+        card.onclick = event => {
+          if (event.target.closest('.todo-check')) {
+            return;
+          }
+
+          location.href = `/todo/detail/${todo.idxTodo}`;
         };
+
         card.innerHTML = `
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <!-- 완료 체크 -->
-                    <div class="form-check todo-check" onclick="event.stopPropagation();">
-                        <input class="form-check-input" type="checkbox"
-                               ${t.done ? 'checked' : ''}
-                               onchange="toggleComplete(${t.todoId}, this.checked)">
-                    </div>
-                    <!-- 본문 -->
-                    <div class="flex-grow-1">
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="badge badge-sm"
-                                  style="background:${t.categoryColor}20; color:${t.categoryColor};">
-                                ${t.categoryName}
-                            </span>
-                            ${priorityBadge(t.priority)}
-                        </div>
-                        <span class="fw-bold fs-6 text-gray-800 ${t.done ? 'text-decoration-line-through text-gray-400' : ''}">
-                            ${t.title}
-                        </span>
-                        <div class="fs-8 text-gray-400 mt-1">📅 ${t.dueDate}</div>
-                    </div>
-                    <i class="ki-duotone ki-arrow-right fs-3 text-gray-300">
-                        <span class="path1"></span><span class="path2"></span>
-                    </i>
+          <div class="card-body py-3">
+            <div class="d-flex align-items-center gap-3">
+
+              <div class="form-check todo-check" onclick="event.stopPropagation();">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  ${todo.done ? 'checked' : ''}
+                  onchange="toggleComplete(${todo.idxTodo}, this.checked)"
+                >
+              </div>
+
+              <div class="flex-grow-1">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <span class="badge badge-sm badge-light-primary">
+                    ${todo.categoryName || '미분류'}
+                  </span>
+
+                  ${priorityBadge(todo.priority)}
+
+                  <span class="badge badge-sm badge-light-success">
+                    ${todo.rewardExp ?? 0} XP
+                  </span>
                 </div>
+
+                <span class="fw-bold fs-6 text-gray-800 ${todo.done ? 'text-decoration-line-through text-gray-400' : ''}">
+                  ${todo.title}
+                </span>
+
+                <div class="fs-8 text-gray-400 mt-1">
+                  📅 ${formatDate(todo.dueDate)}
+                </div>
+              </div>
+
+              <i class="ki-duotone ki-arrow-right fs-3 text-gray-300">
+                <span class="path1"></span>
+                <span class="path2"></span>
+              </i>
+
             </div>
+          </div>
         `;
+
         container.appendChild(card);
       });
     }
 
     function selectStatus(btn) {
-      document.querySelectorAll('#statusFilter .filter-btn').forEach(b => {
-        b.classList.remove('btn-primary'); b.classList.add('btn-light');
+      document.querySelectorAll('#statusFilter .filter-btn').forEach(button => {
+        button.classList.remove('btn-primary');
+        button.classList.add('btn-light');
       });
-      btn.classList.remove('btn-light'); btn.classList.add('btn-primary');
+
+      btn.classList.remove('btn-light');
+      btn.classList.add('btn-primary');
+
       currentStatus = btn.dataset.status;
-      renderTodos();
+      loadTodos();
     }
 
     function selectCategory(btn) {
-      document.querySelectorAll('#categoryFilter .cat-chip').forEach(b => {
-        b.classList.remove('btn-light-primary', 'active-cat');
-        b.classList.add('btn-light');
+      document.querySelectorAll('#categoryFilter .cat-chip').forEach(button => {
+        button.classList.remove('btn-light-primary', 'active-cat');
+        button.classList.add('btn-light');
       });
+
       btn.classList.remove('btn-light');
       btn.classList.add('btn-light-primary', 'active-cat');
+
       currentCat = btn.dataset.cat;
       renderTodos();
     }
 
-    function toggleComplete(todoId, checked) {
-      // 🚧 API 나오면: PATCH /api/todos/{id}/complete
-      //    완료 시 XP/물방울 지급 결과를 받아서 토스트로 보여주면 좋음
-      console.log('완료 토글', todoId, checked);
-      const todo = dummyTodos.find(t => t.todoId === todoId);
-      if (todo) todo.done = checked;
-      renderTodos();
+    async function toggleComplete(todoId, checked) {
+      try {
+        const url = checked
+          ? `/api/todos/${todoId}/complete`
+          : `/api/todos/${todoId}/incomplete`;
+
+        const res = await fetch(url, {
+          method: 'PATCH'
+        });
+
+        const body = await res.json();
+
+        if (!res.ok || body.result === false) {
+          throw new Error(body.message || '완료 상태 변경 실패');
+        }
+
+        await loadTodos();
+
+      } catch (e) {
+        console.error('완료 상태 변경 실패', e);
+        await loadTodos();
+      }
     }
 
-    /*  API 연동 시 (참고)
-    function loadTodos() {
-        const params = new URLSearchParams();
-        if (currentStatus !== 'ALL') params.set('status', currentStatus);
-        if (currentCat !== 'ALL') params.set('category', currentCat);
-        fetch('/api/todos?' + params, { credentials: 'include' })
-            .then(res => res.status === 401 ? (location.href='/') : res.json())
-            .then(res => { ... renderTodos with res.data ... });
+    function formatDate(value) {
+      if (!value) {
+        return '-';
+      }
+
+      return value.substring(0, 10);
     }
-    */
   </script>
 </body>
 
