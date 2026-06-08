@@ -109,43 +109,44 @@
       location.href = '/admin/';
     }
 
-    // 🚧 더미. API(GET /api/admin/home) 나오면 교체.
-    const data = {
-      totalUsers: 1284, newUsers: 23, completionRate: 71,
-      geminiCalls: 3420, cacheRate: 64, geminiCost: 12.40,
-      signup: { labels: ['월', '화', '수', '목', '금', '토', '일'], data: [12, 18, 15, 22, 30, 25, 23] },
-      cache: { hit: 64, miss: 36 }
-    };
-
     document.addEventListener('DOMContentLoaded', function () {
-      document.getElementById('totalUsers').textContent = data.totalUsers.toLocaleString();
-      document.getElementById('newUsers').textContent = '+' + data.newUsers + ' 오늘';
-      document.getElementById('completionRate').textContent = data.completionRate + '%';
-      document.getElementById('geminiCalls').textContent = data.geminiCalls.toLocaleString();
-      document.getElementById('cacheRate').textContent = '캐시 적중 ' + data.cacheRate + '%';
-      document.getElementById('geminiCost').textContent = '$' + data.geminiCost.toFixed(2);
-      renderCharts();
+      fetch('/admin/api/home')
+        .then(res => res.json())
+        .then(res => {
+          const d = res.data;
+          document.getElementById('totalUsers').textContent = d.totalUsers.toLocaleString();
+          document.getElementById('newUsers').textContent = '+' + d.todayUsers + ' 오늘';
+          document.getElementById('completionRate').textContent = d.completionRate + '%';
+          // Gemini는 API 미구현 — 추후 연결
+          document.getElementById('geminiCalls').textContent = '-';
+          document.getElementById('cacheRate').textContent = '캐시 적중 -';
+          document.getElementById('geminiCost').textContent = '$-';
+          renderCharts(d.signupLabels, d.signupData);
+        })
+        .catch(err => console.error(err));
     });
 
-    function renderCharts() {
+    function renderCharts(signupLabels, signupData) {
       if (typeof ApexCharts === 'undefined') { console.warn('ApexCharts 없음'); return; }
 
       new ApexCharts(document.getElementById('signupChart'), {
-        series: [{ name: '가입자', data: data.signup.data }],
+        series: [{ name: '가입자', data: signupData }],
         chart: { type: 'area', height: 300, toolbar: { show: false } },
         colors: ['#3699FF'],
         stroke: { curve: 'smooth', width: 3 },
         fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.1 } },
-        xaxis: { categories: data.signup.labels },
+        xaxis: { categories: signupLabels },
         dataLabels: { enabled: false }
       }).render();
 
+      // Gemini 캐시 차트 — 데이터 없을 때 placeholder
       new ApexCharts(document.getElementById('cacheChart'), {
-        series: [data.cache.hit, data.cache.miss],
+        series: [0, 100],
         chart: { type: 'donut', height: 260 },
         labels: ['캐시 적중', '신규 호출'],
         colors: ['#0BB783', '#FFA800'],
-        legend: { position: 'bottom' }
+        legend: { position: 'bottom' },
+        noData: { text: '데이터 없음' }
       }).render();
     }
   </script>
