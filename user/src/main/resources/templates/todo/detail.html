@@ -14,13 +14,21 @@
         <!-- 할일 정보 -->
         <div class="card shadow-sm">
           <div class="card-body">
+
             <div class="d-flex align-items-center gap-2 mb-2">
               <span id="catBadge" class="badge badge-sm">카테고리</span>
               <span id="prioBadge" class="badge badge-sm badge-light-warning">우선순위 B</span>
               <span id="statusBadge" class="badge badge-sm badge-light-secondary ms-auto">진행중</span>
             </div>
+
             <h2 id="todoTitle" class="fw-bold fs-3 text-gray-900 mb-2">할일 제목</h2>
-            <div class="fs-7 text-gray-500">📅 마감일 <span id="dueDate">-</span></div>
+
+            <div id="todoContent" class="fs-6 text-gray-700 mb-3 d-none"></div>
+
+            <div class="fs-7 text-gray-500">
+              📅 마감일 <span id="dueDate">-</span>
+            </div>
+
           </div>
         </div>
 
@@ -29,14 +37,23 @@
           <div class="card-header">
             <h3 class="card-title fs-6">✨ AI 경험치 추천</h3>
           </div>
+
           <div class="card-body">
             <div id="expResult" class="text-center py-3">
               <p class="fs-7 text-gray-500 mb-3">
-                이 할일을 완료하면 얼마의 경험치를 받을지<br>AI가 책정해드려요
+                이 할일을 완료하면 얼마의 경험치를 받을지<br>
+                AI가 책정해드려요
               </p>
-              <button type="button" id="recommendBtn" class="btn btn-light-primary" onclick="recommendExp()">
+
+              <button
+                type="button"
+                id="recommendBtn"
+                class="btn btn-light-primary"
+                onclick="recommendExp()"
+              >
                 <i class="ki-duotone ki-rocket fs-4">
-                  <span class="path1"></span><span class="path2"></span>
+                  <span class="path1"></span>
+                  <span class="path2"></span>
                 </i>
                 경험치 추천받기
               </button>
@@ -45,20 +62,40 @@
         </div>
 
         <!-- 완료 버튼 -->
-        <button type="button" id="completeBtn" class="btn btn-primary btn-lg w-100" onclick="completeTodo()">
+        <button
+          type="button"
+          id="completeBtn"
+          class="btn btn-primary btn-lg w-100"
+          onclick="completeTodo()"
+        >
           ✅ 완료하기
         </button>
 
         <!-- 수정 / 삭제 -->
         <div class="d-flex gap-2">
-          <button type="button" class="btn btn-light-primary flex-fill" onclick="location.href='/todo/edit/' + todoId">
-            <i class="ki-duotone ki-pencil fs-5"><span class="path1"></span><span class="path2"></span></i>
+          <button
+            type="button"
+            class="btn btn-light-primary flex-fill"
+            onclick="location.href='/todo/edit/' + todoId"
+          >
+            <i class="ki-duotone ki-pencil fs-5">
+              <span class="path1"></span>
+              <span class="path2"></span>
+            </i>
             수정
           </button>
-          <button type="button" class="btn btn-light-danger flex-fill" onclick="handleDelete()">
+
+          <button
+            type="button"
+            class="btn btn-light-danger flex-fill"
+            onclick="handleDelete()"
+          >
             <i class="ki-duotone ki-trash fs-5">
-              <span class="path1"></span><span class="path2"></span><span class="path3"></span>
-              <span class="path4"></span><span class="path5"></span>
+              <span class="path1"></span>
+              <span class="path2"></span>
+              <span class="path3"></span>
+              <span class="path4"></span>
+              <span class="path5"></span>
             </i>
             삭제
           </button>
@@ -73,80 +110,237 @@
 
   <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
   <script th:src="@{/js/scripts.bundle.js}"></script>
-  <script th:inline="javascript">
-    // 컨트롤러가 model에 담아준 todoId (없으면 URL에서 추출)
-    const todoId = /*[[${todoId}]]*/ location.pathname.split('/').pop();
 
-    // 🚧 더미. API(/api/todos/{id}) 나오면 교체.
-    const dummyTodo = {
-      todoId: todoId, title: '운동 30분 하기', priority: 'B',
-      categoryName: '건강', categoryColor: '#1BC5BD',
-      dueDate: '2026-06-05', done: false
-    };
+  <script>
+    const todoId = location.pathname.split('/').pop();
 
     document.addEventListener('DOMContentLoaded', function () {
-      render(dummyTodo);
+      loadTodo();
     });
 
-    function render(t) {
-      document.getElementById('todoTitle').textContent = t.title;
-      document.getElementById('dueDate').textContent = t.dueDate || '-';
+    async function loadTodo() {
+      try {
+        console.log("todoId:", todoId);
 
-      const cat = document.getElementById('catBadge');
-      cat.textContent = t.categoryName;
-      cat.style.background = t.categoryColor + '20';
-      cat.style.color = t.categoryColor;
+        const res = await fetch(`/api/todos/${todoId}`);
+        const body = await res.json();
 
-      document.getElementById('prioBadge').textContent = '우선순위 ' + t.priority;
+        console.log("todo detail response:", body);
 
-      const sb = document.getElementById('statusBadge');
-      if (t.done) { sb.textContent = '완료'; sb.className = 'badge badge-sm badge-light-success ms-auto'; }
-      else { sb.textContent = '진행중'; sb.className = 'badge badge-sm badge-light-secondary ms-auto'; }
+        if (!res.ok || body.result === false) {
+          throw new Error(body.message || '할일 조회 실패');
+        }
+
+        render(body.data);
+
+      } catch (e) {
+        console.error("loadTodo error:", e);
+
+        Swal.fire({
+          text: e.message,
+          icon: "error",
+          buttonsStyling: false,
+          confirmButtonText: "확인",
+          customClass: {
+            confirmButton: "btn btn-primary"
+          }
+        }).then(() => location.href = '/todo/list');
+      }
     }
 
-    // AI 경험치 추천 — 명세서: 비동기(202 접수 → 폴링)
-    function recommendExp() {
+    function render(todo) {
+      document.getElementById('todoTitle').textContent = todo.title;
+
+      renderContent(todo.content);
+
+      document.getElementById('dueDate').textContent = formatDate(todo.dueDate);
+
+      const catBadge = document.getElementById('catBadge');
+      catBadge.textContent = todo.categoryName || '미분류';
+
+      document.getElementById('prioBadge').textContent = '우선순위 ' + todo.priority;
+
+      renderStatus(todo.done);
+      renderRewardExp(todo.rewardExp);
+    }
+
+    function renderContent(content) {
+      const contentEl = document.getElementById('todoContent');
+
+      if (content && content.trim() !== '') {
+        contentEl.textContent = content;
+        contentEl.classList.remove('d-none');
+      } else {
+        contentEl.textContent = '';
+        contentEl.classList.add('d-none');
+      }
+    }
+
+    function renderStatus(done) {
+      const statusBadge = document.getElementById('statusBadge');
+      const completeBtn = document.getElementById('completeBtn');
+
+      if (done) {
+        statusBadge.textContent = '완료';
+        statusBadge.className = 'badge badge-sm badge-light-success ms-auto';
+
+        completeBtn.disabled = true;
+        completeBtn.textContent = '✅ 완료됨';
+      } else {
+        statusBadge.textContent = '진행중';
+        statusBadge.className = 'badge badge-sm badge-light-secondary ms-auto';
+
+        completeBtn.disabled = false;
+        completeBtn.textContent = '✅ 완료하기';
+      }
+    }
+
+    function renderRewardExp(rewardExp) {
+      if (rewardExp && rewardExp > 0) {
+        document.getElementById('expResult').innerHTML = `
+          <div style="font-size:40px;">⭐</div>
+          <div class="fw-bolder fs-2x text-primary mt-2">+${rewardExp} XP</div>
+          <p class="fs-7 text-gray-500 mt-2">완료 시 받게 될 경험치예요</p>
+        `;
+      }
+    }
+
+    function formatDate(value) {
+      if (!value) {
+        return '-';
+      }
+
+      return value.substring(0, 10);
+    }
+
+    // AI 경험치 추천
+    // 현재 recommend-exp/test API가 없으면 이 함수는 에러가 날 수 있음
+    async function recommendExp() {
       const btn = document.getElementById('recommendBtn');
+
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>AI가 계산 중...';
 
-      // 🚧 실제 흐름 (참고):
-      //  POST /api/todos/{id}/recommend → 202 Accepted (접수만)
-      //  → 일정 간격으로 GET 폴링해서 결과 받기 (Redis 캐시면 즉시)
-      // 지금은 더미로 1.5초 후 결과 표시.
-      setTimeout(() => {
-        const xp = 35; // 더미 책정값
+      try {
+        const res = await fetch(`/api/todos/${todoId}/recommend-exp/test`, {
+          method: 'POST'
+        });
+
+        const body = await res.json();
+
+        if (!res.ok || body.result === false) {
+          throw new Error(body.message || '경험치 추천 실패');
+        }
+
+        const xp = body.data;
+
         document.getElementById('expResult').innerHTML = `
-            <div style="font-size:40px;">⭐</div>
-            <div class="fw-bolder fs-2x text-primary mt-2">+${xp} XP</div>
-            <p class="fs-7 text-gray-500 mt-2">완료 시 받게 될 경험치예요</p>
+          <div style="font-size:40px;">⭐</div>
+          <div class="fw-bolder fs-2x text-primary mt-2">+${xp} XP</div>
+          <p class="fs-7 text-gray-500 mt-2">완료 시 받게 될 경험치예요</p>
         `;
-      }, 1500);
+
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = '경험치 추천받기';
+
+        Swal.fire({
+          text: e.message,
+          icon: "error",
+          buttonsStyling: false,
+          confirmButtonText: "확인",
+          customClass: {
+            confirmButton: "btn btn-primary"
+          }
+        });
+      }
     }
 
-    function completeTodo() {
-      // 🚧 PATCH /api/todos/{id}/complete → XP/물방울 지급
-      Swal.fire({
-        html: `완료! <b class="text-primary">+10 XP</b>, 💧 물방울 +2`,
-        icon: "success", buttonsStyling: false, confirmButtonText: "확인",
-        customClass: { confirmButton: "btn btn-primary" }
-      }).then(() => location.href = '/todo/list');
+    async function completeTodo() {
+      try {
+        const res = await fetch(`/api/todos/${todoId}/complete`, {
+          method: 'PATCH'
+        });
+
+        const body = await res.json();
+
+        if (!res.ok || body.result === false) {
+          throw new Error(body.message || '완료 처리 실패');
+        }
+
+        const todo = body.data;
+
+        Swal.fire({
+          html: `완료! <b class="text-primary">+${todo.rewardExp} XP</b>`,
+          icon: "success",
+          buttonsStyling: false,
+          confirmButtonText: "확인",
+          customClass: {
+            confirmButton: "btn btn-primary"
+          }
+        }).then(() => location.href = '/todo/list');
+
+      } catch (e) {
+        Swal.fire({
+          text: e.message,
+          icon: "error",
+          buttonsStyling: false,
+          confirmButtonText: "확인",
+          customClass: {
+            confirmButton: "btn btn-primary"
+          }
+        });
+      }
     }
 
     function handleDelete() {
       Swal.fire({
-        text: "정말 삭제하시겠습니까?", icon: "warning",
-        buttonsStyling: false, showCancelButton: true,
-        confirmButtonText: "삭제", cancelButtonText: "취소",
-        customClass: { confirmButton: "btn btn-danger", cancelButton: "btn btn-light" }
-      }).then(result => {
-        if (result.isConfirmed) {
-          // 🚧 DELETE /api/todos/{id}
+        text: "정말 삭제하시겠습니까?",
+        icon: "warning",
+        buttonsStyling: false,
+        showCancelButton: true,
+        confirmButtonText: "삭제",
+        cancelButtonText: "취소",
+        customClass: {
+          confirmButton: "btn btn-danger",
+          cancelButton: "btn btn-light"
+        }
+      }).then(async result => {
+        if (!result.isConfirmed) {
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/todos/${todoId}`, {
+            method: 'DELETE'
+          });
+
+          const body = await res.json();
+
+          if (!res.ok || body.result === false) {
+            throw new Error(body.message || '삭제 실패');
+          }
+
           Swal.fire({
-            text: "삭제되었습니다.", icon: "success",
-            buttonsStyling: false, confirmButtonText: "확인",
-            customClass: { confirmButton: "btn btn-primary" }
+            text: "삭제되었습니다.",
+            icon: "success",
+            buttonsStyling: false,
+            confirmButtonText: "확인",
+            customClass: {
+              confirmButton: "btn btn-primary"
+            }
           }).then(() => location.href = '/todo/list');
+
+        } catch (e) {
+          Swal.fire({
+            text: e.message,
+            icon: "error",
+            buttonsStyling: false,
+            confirmButtonText: "확인",
+            customClass: {
+              confirmButton: "btn btn-primary"
+            }
+          });
         }
       });
     }
