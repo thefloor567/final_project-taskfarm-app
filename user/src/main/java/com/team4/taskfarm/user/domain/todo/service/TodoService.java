@@ -100,6 +100,14 @@ public class TodoService {
                 .toList();
     }
 	
+	// 단건 조회
+	@Transactional(readOnly = true)
+	public TodoResponse getTodo(Long idxUser, Long idxTodo) {
+	    TbTodo todo = findTodo(idxUser, idxTodo);
+	    String categoryName = getCategoryName(idxUser, todo.getIdxCat());
+	    return TodoResponse.from(todo, categoryName);
+	}
+	
 	// 할일 생성 (엔티티로 바꿔서 repo에 저장)
 	@Transactional
 	public TodoResponse createTodo(Long idxUser, TodoRequest request) {
@@ -141,6 +149,15 @@ public class TodoService {
 		todo.complete();
 		String categoryName = getCategoryName(idxUser, todo.getIdxCat());
 		return TodoResponse.from(todo, categoryName);
+	}
+	
+	// 할일 완료 해제
+	@Transactional
+	public TodoResponse incompleteTodo(Long idxUser, Long idxTodo) {
+	    TbTodo todo = findTodo(idxUser, idxTodo);
+	    todo.incomplete();
+	    String categoryName = getCategoryName(idxUser, todo.getIdxCat());
+	    return TodoResponse.from(todo, categoryName);
 	}
 	
 	// repo에서 idxUser와 idxTodo로 해당 사용자의 할일 찾아오기

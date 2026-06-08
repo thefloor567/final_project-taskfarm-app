@@ -79,6 +79,16 @@ public class TbTodo extends BaseEntity {
     	this.deleteDate = LocalDateTime.now();
     }
     
+    // 완료 해제 메서드
+    public void incomplete() {
+        if (!this.isDone) {
+            return;
+        }
+
+        this.isDone = false;
+        this.completeDate = null;
+    }
+    
     // 새로운 Todo 엔티티를 만들어주는 메서드
     public static TbTodo of(
             Long idxUser,
