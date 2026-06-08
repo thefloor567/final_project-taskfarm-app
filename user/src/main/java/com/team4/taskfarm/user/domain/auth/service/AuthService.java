@@ -4,8 +4,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.team4.taskfarm.common.config.JwtService;
 import com.team4.taskfarm.common.exception.CustomException;
 import com.team4.taskfarm.user.domain.auth.dto.LoginRequest;
+import com.team4.taskfarm.user.domain.auth.dto.LoginResponse;
 import com.team4.taskfarm.user.domain.auth.dto.SignupRequest;
 import com.team4.taskfarm.user.domain.auth.dto.UpdateProfileRequest;
 import com.team4.taskfarm.user.domain.auth.dto.UserResponse;
@@ -20,6 +22,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     @Transactional
     public void signup(SignupRequest req) {
@@ -37,7 +40,7 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public String login(LoginRequest req) {
+    public LoginResponse login(LoginRequest req) {
         User user = userRepository.findByEmail(req.getEmail())
             .orElseThrow(() -> CustomException.unauthorized("존재하지 않는 이메일입니다."));
 
@@ -49,8 +52,15 @@ public class AuthService {
             throw CustomException.unauthorized("비밀번호가 일치하지 않습니다.");
         }
 
-        // TODO: JWT 연동 후 실제 토큰 반환으로 교체
-        return "임시토큰";
+        String token = jwtService.generateToken(
+            user.getEmail(),
+            user.getRole().name(),
+            user.getIdxUser()
+        );
+
+        return LoginResponse.builder()
+            .token(token)
+            .build();
     }
 
     @Transactional(readOnly = true)
@@ -69,8 +79,6 @@ public class AuthService {
         if (req.getNickname() != null) {
             user.updateNickname(req.getNickname());
         }
-
-        // TODO: 비밀번호 변경은 별도 API 확정 후 구현
     }
 
     @Transactional
