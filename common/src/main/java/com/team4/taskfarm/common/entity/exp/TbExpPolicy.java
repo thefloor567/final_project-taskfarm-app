@@ -35,5 +35,9 @@ public class TbExpPolicy extends BaseEntity {
 
     public enum Priority { A, B, C }
 
-    // ✏️ TODO: 어드민 수정 메서드
+    public void update(int baseExp, int doneDrops, int levelUpDrops) {
+        this.baseExp = baseExp;
+        this.doneDrops = doneDrops;
+        this.levelUpDrops = levelUpDrops;
+    }
 }

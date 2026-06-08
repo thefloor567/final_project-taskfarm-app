@@ -48,7 +48,7 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // 로그인 페이지 + 로그인 API + 정적 리소스는 누구나 접근 가능
-                .requestMatchers("/", "/api/login", "/css/**", "/js/**", "/plugins/**", "/media/**").permitAll()
+                .requestMatchers("/", "/api/login", "/css/**", "/js/**", "/plugins/**", "/media/**", "/webjars/**").permitAll()
                 // 나머지는 ROLE_ADMIN 만
                 .anyRequest().hasRole("ADMIN")
             )

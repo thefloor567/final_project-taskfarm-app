@@ -40,5 +40,9 @@ public class TbEventConfig {
     @Column(name = "UpdateDate")
     private LocalDateTime updateDate;
 
-    // ✏️ TODO: 어드민 수정 메서드
+    /** 어드민 이벤트 정책 수정 (가중치/활성여부). */
+    public void updatePolicy(int weight, boolean isActive) {
+        this.weight = weight;
+        this.isActive = isActive;
+    }
 }

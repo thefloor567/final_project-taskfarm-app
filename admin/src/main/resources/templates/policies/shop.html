@@ -61,25 +61,22 @@
     }
 
     let currentTab = 'seeds';
-
-    // 🚧 더미. API(GET /api/admin/shop/items) 나오면 교체.
-    // 씨앗: 보상=수확량(작물 몇 개) / 도구: 보상=효과수치 같은 개념
-    let items = {
-      seeds: [
-        { itemId: 1, name: '🍅 토마토 씨앗', price: 30, stock: 99, dailyLimit: 5, reward: 3 },
-        { itemId: 2, name: '🥕 당근 씨앗', price: 20, stock: 99, dailyLimit: 5, reward: 2 },
-        { itemId: 3, name: '🌽 옥수수 씨앗', price: 50, stock: 10, dailyLimit: 3, reward: 4 },
-        { itemId: 4, name: '🍓 딸기 씨앗', price: 80, stock: 20, dailyLimit: 2, reward: 5 },
-      ],
-      tools: [
-        { itemId: 11, name: '🧑‍🌾 허수아비', price: 100, stock: 5, dailyLimit: 2, reward: 0 },
-        { itemId: 12, name: '💩 비료', price: 60, stock: 20, dailyLimit: 5, reward: 0 },
-        { itemId: 13, name: '🏡 온실', price: 200, stock: 2, dailyLimit: 1, reward: 0 },
-      ]
-    };
+    let items = { seeds: [], tools: [] };
 
     document.addEventListener('DOMContentLoaded', function () {
-      render();
+      Promise.all([
+        fetch('/admin/api/policies/shop/seeds').then(r => r.json()),
+        fetch('/admin/api/policies/shop/tools').then(r => r.json())
+      ]).then(([seedRes, toolRes]) => {
+        // 씨앗: reward = 수확량 / 도구: reward = 효과수치(uses)
+        items.seeds = seedRes.data.map(s => ({
+          itemId: s.id, name: s.name, price: s.price, stock: s.stock, dailyLimit: s.dailyLimit, reward: s.reward
+        }));
+        items.tools = toolRes.data.map(t => ({
+          itemId: t.id, name: t.name, price: t.price, stock: t.stock, dailyLimit: t.dailyLimit, reward: t.uses
+        }));
+        render();
+      }).catch(err => console.error(err));
     });
 
     function selectTab(btn) {
@@ -128,15 +125,35 @@
         });
       }
 
-      // 🚧 PATCH /api/admin/shop/items/{itemId} {price, stock, dailyLimit, reward}
       const it = items[currentTab].find(x => x.itemId === itemId);
-      it.price = price; it.stock = stock; it.dailyLimit = limit; it.reward = reward;
+      const endpoint = currentTab === 'seeds' ? 'seeds' : 'tools';
+      // 씨앗은 reward, 도구는 uses(효과수치)로 키가 다름
+      const body = currentTab === 'seeds'
+        ? { price, reward, stock, dailyLimit: limit }
+        : { price, uses: reward, stock, dailyLimit: limit };
 
-      Swal.fire({
-        text: `${it.name} 정책이 저장되었습니다.`, icon: "success",
-        buttonsStyling: false, confirmButtonText: "확인",
-        customClass: { confirmButton: "btn btn-primary" }
-      });
+      fetch(`/admin/api/policies/shop/${endpoint}/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+        .then(res => res.json())
+        .then(res => {
+          if (res.result) {
+            it.price = price; it.stock = stock; it.dailyLimit = limit; it.reward = reward;
+            Swal.fire({
+              text: `${it.name} 정책이 저장되었습니다.`, icon: "success",
+              buttonsStyling: false, confirmButtonText: "확인",
+              customClass: { confirmButton: "btn btn-primary" }
+            });
+          } else {
+            Swal.fire({
+              text: res.message || "저장 실패", icon: "error",
+              buttonsStyling: false, confirmButtonText: "확인",
+              customClass: { confirmButton: "btn btn-danger" }
+            });
+          }
+        });
     }
   </script>
 </body>
