@@ -77,4 +77,5 @@ public class CategoryApiController extends UserBaseController {
         categoryService.deleteCategory(TEST_USER_IDX, catIdx);
         return ok();
     }
+    
 }

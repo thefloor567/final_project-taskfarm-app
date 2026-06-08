@@ -16,8 +16,8 @@ public class TodoController extends UserBaseController {
     }
 
     @GetMapping("/todo/add")
-    public String todoAdd() {
-        // if (!isLoggedIn()) return "redirect:/auth/login";
+    public String todoAdd(Model model) {
+        model.addAttribute("mode", "add");
         return "todo/add";
     }
 
@@ -27,4 +27,12 @@ public class TodoController extends UserBaseController {
         model.addAttribute("todoId", todoId);
         return "todo/detail";
     }
+    
+    @GetMapping("/todo/edit/{todoId}")
+    public String todoEdit(@PathVariable Long todoId, Model model) {
+        model.addAttribute("todoId", todoId);
+        model.addAttribute("mode", "edit");
+        return "todo/add";
+    }
+    
 }
