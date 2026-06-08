@@ -11,20 +11,17 @@
     <div id="scrollContainer">
       <div class="p-4 d-flex flex-column gap-3">
 
-        <!-- 없을 때 -->
         <div id="emptyState" class="d-flex flex-column align-items-center justify-content-center gap-3 py-20 d-none">
           <span style="font-size: 48px;">🏷️</span>
           <span class="fs-5 fw-semibold text-gray-500">카테고리가 없어요</span>
           <span class="fs-7 text-gray-400">아래 버튼으로 카테고리를 만들어보세요!</span>
         </div>
 
-        <!-- 목록 -->
         <div id="categoryContainer" class="d-flex flex-column gap-2"></div>
 
       </div>
     </div>
 
-    <!-- 추가 버튼 (모달 띄움) -->
     <button type="button" id="fabBtn" class="btn btn-primary btn-icon rounded-circle shadow-lg"
       style="position: absolute; bottom: 24px; right: 20px; width: 52px; height: 52px; z-index: 99;"
       onclick="openCreate()">
@@ -35,7 +32,6 @@
 
   </div>
 
-  <!-- 카테고리 생성/수정 모달 -->
   <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content shadow-lg">
@@ -64,25 +60,42 @@
   <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
   <script th:src="@{/js/scripts.bundle.js}"></script>
   <script>
-    // Metronic 톤에 맞춘 색 팔레트
     const PALETTE = ['#1BC5BD', '#3699FF', '#FFA800', '#F64E60', '#8950FC', '#0BB783', '#FF6B35', '#7239EA'];
 
-    let editId = null;          // null이면 생성, 값 있으면 수정
+    let editId = null;
     let selectedColor = PALETTE[0];
     let modalInstance = null;
+    let categories = [];
 
-    // 🚧 더미. API(/api/categories) 나오면 교체.
-    let categories = [
-      { categoryId: 1, name: '건강', color: '#1BC5BD' },
-      { categoryId: 2, name: '공부', color: '#3699FF' },
-      { categoryId: 3, name: '집안일', color: '#FFA800' },
-    ];
-
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', async function () {
       modalInstance = new bootstrap.Modal(document.getElementById('categoryModal'));
       renderColorPicker();
-      render();
+      await loadCategories();
     });
+
+    async function loadCategories() {
+      try {
+        const response = await fetch('/api/category');
+
+        if (!response.ok) {
+          warn("카테고리 목록을 불러오지 못했습니다.");
+          render();
+          return;
+        }
+
+        const result = await response.json();
+        categories = result.data || [];
+        render();
+
+      } catch (error) {
+        warn("서버 통신 중 오류가 발생했습니다.");
+        render();
+      }
+    }
+
+    function getCategoryId(category) {
+      return category.idxCat || category.categoryId;
+    }
 
     function render() {
       const box = document.getElementById('categoryContainer');
@@ -93,33 +106,34 @@
         empty.classList.remove('d-none');
         return;
       }
+
       empty.classList.add('d-none');
 
       categories.forEach(c => {
+        const id = getCategoryId(c);
+
         const card = document.createElement('div');
         card.className = 'card shadow-sm';
         card.innerHTML = `
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-3">
-                        <span style="width:16px;height:16px;border-radius:50%;background:${c.color};display:inline-block;"></span>
-                        <span class="fw-bold fs-6 text-gray-800">${c.name}</span>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-icon btn-light"
-                                onclick="openEdit(${c.categoryId})">
-                            <i class="ki-duotone ki-pencil fs-5"><span class="path1"></span><span class="path2"></span></i>
-                        </button>
-                        <button class="btn btn-sm btn-icon btn-light-danger"
-                                onclick="deleteCategory(${c.categoryId})">
-                            <i class="ki-duotone ki-trash fs-5">
-                                <span class="path1"></span><span class="path2"></span><span class="path3"></span>
-                                <span class="path4"></span><span class="path5"></span>
-                            </i>
-                        </button>
-                    </div>
-                </div>
+          <div class="card-body py-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-3">
+                <span style="width:16px;height:16px;border-radius:50%;background:${c.color};display:inline-block;"></span>
+                <span class="fw-bold fs-6 text-gray-800">${c.name}</span>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-icon btn-light" onclick="openEdit(${id})">
+                  <i class="ki-duotone ki-pencil fs-5"><span class="path1"></span><span class="path2"></span></i>
+                </button>
+                <button class="btn btn-sm btn-icon btn-light-danger" onclick="deleteCategory(${id})">
+                  <i class="ki-duotone ki-trash fs-5">
+                    <span class="path1"></span><span class="path2"></span><span class="path3"></span>
+                    <span class="path4"></span><span class="path5"></span>
+                  </i>
+                </button>
+              </div>
             </div>
+          </div>
         `;
         box.appendChild(card);
       });
@@ -128,22 +142,25 @@
     function renderColorPicker() {
       const box = document.getElementById('colorPicker');
       box.innerHTML = '';
+
       PALETTE.forEach(color => {
         const dot = document.createElement('button');
         dot.type = 'button';
         dot.style.cssText = `width:36px;height:36px;border-radius:50%;background:${color};
                              border:3px solid transparent;cursor:pointer;`;
         dot.dataset.color = color;
-        dot.onclick = () => selectColor(dot, color);
+        dot.onclick = () => selectColor(color);
         box.appendChild(dot);
       });
+
       highlightColor();
     }
 
-    function selectColor(dot, color) {
+    function selectColor(color) {
       selectedColor = color;
       highlightColor();
     }
+
     function highlightColor() {
       document.querySelectorAll('#colorPicker button').forEach(d => {
         d.style.borderColor = (d.dataset.color === selectedColor) ? '#181C32' : 'transparent';
@@ -160,8 +177,9 @@
     }
 
     function openEdit(id) {
-      const c = categories.find(x => x.categoryId === id);
+      const c = categories.find(x => getCategoryId(x) === id);
       if (!c) return;
+
       editId = id;
       selectedColor = c.color;
       document.getElementById('modalTitle').textContent = '카테고리 수정';
@@ -170,41 +188,93 @@
       modalInstance.show();
     }
 
-    function saveCategory() {
+    async function saveCategory() {
       const name = document.getElementById('nameInput').value.trim();
+
       if (!name) {
-        return Swal.fire({
-          text: "이름을 입력해주세요.", icon: "warning",
-          buttonsStyling: false, confirmButtonText: "확인",
-          customClass: { confirmButton: "btn btn-primary" }
-        });
+        warn("이름을 입력해주세요.");
+        return;
       }
 
-      // 🚧 더미 처리. API 나오면:
-      //   생성: POST /api/categories {name, color}
-      //   수정: PATCH /api/categories/{id} {name, color}
-      if (editId) {
-        const c = categories.find(x => x.categoryId === editId);
-        c.name = name; c.color = selectedColor;
-      } else {
-        categories.push({ categoryId: Date.now(), name, color: selectedColor });
+      const payload = {
+        name: name,
+        color: selectedColor
+      };
+
+      try {
+        let response;
+
+        if (editId) {
+          response = await fetch(`/api/category/${editId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          response = await fetch('/api/category', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        if (!response.ok) {
+          warn("카테고리 저장에 실패했습니다.");
+          return;
+        }
+
+        modalInstance.hide();
+        await loadCategories();
+
+      } catch (error) {
+        warn("서버 통신 중 오류가 발생했습니다.");
       }
-      modalInstance.hide();
-      render();
     }
 
     function deleteCategory(id) {
       Swal.fire({
         text: "삭제하시겠습니까? 연결된 할일은 '카테고리 없음'이 됩니다.",
-        icon: "warning", buttonsStyling: false, showCancelButton: true,
-        confirmButtonText: "삭제", cancelButtonText: "취소",
-        customClass: { confirmButton: "btn btn-danger", cancelButton: "btn btn-light" }
-      }).then(result => {
-        if (result.isConfirmed) {
-          // 🚧 DELETE /api/categories/{id}
-          categories = categories.filter(x => x.categoryId !== id);
-          render();
+        icon: "warning",
+        buttonsStyling: false,
+        showCancelButton: true,
+        confirmButtonText: "삭제",
+        cancelButtonText: "취소",
+        customClass: {
+          confirmButton: "btn btn-danger",
+          cancelButton: "btn btn-light"
         }
+      }).then(async result => {
+        if (!result.isConfirmed) return;
+
+        try {
+          const response = await fetch(`/api/category/${id}`, {
+            method: 'DELETE'
+          });
+
+          if (!response.ok) {
+            warn("카테고리 삭제에 실패했습니다.");
+            return;
+          }
+
+          await loadCategories();
+
+        } catch (error) {
+          warn("서버 통신 중 오류가 발생했습니다.");
+        }
+      });
+    }
+
+    function warn(msg) {
+      Swal.fire({
+        text: msg,
+        icon: "warning",
+        buttonsStyling: false,
+        confirmButtonText: "확인",
+        customClass: { confirmButton: "btn btn-primary" }
       });
     }
   </script>
