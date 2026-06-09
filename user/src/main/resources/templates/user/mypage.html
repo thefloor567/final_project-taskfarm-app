@@ -215,20 +215,39 @@
       passwordModal.show();
     }
 
-    function savePassword() {
-      const currentPw = document.getElementById('currentPw').value;
-      const newPw = document.getElementById('newPw').value;
+    async function savePassword() {
+    	  const currentPw = document.getElementById('currentPw').value;
+    	  const newPw = document.getElementById('newPw').value;
 
-      if (!currentPw || !newPw) return warn("모든 항목을 입력해주세요.");
-      if (newPw.length < 8) return warn("새 비밀번호는 8자 이상이어야 합니다.");
+    	  if (!currentPw || !newPw) return warn("모든 항목을 입력해주세요.");
+    	  if (newPw.length < 8) return warn("새 비밀번호는 8자 이상이어야 합니다.");
 
-      // TODO: 백엔드 비밀번호 변경 API 구현 후 연결
-      // 예상 API: PATCH /api/auth/password
-      // body: { currentPassword: currentPw, newPassword: newPw }
-      // 현재는 JWT 인증 모듈 연동 전이므로 실제 현재 유저 식별 테스트가 어려워 보류.
-      passwordModal.hide();
-      ok("비밀번호 변경 API가 아직 연결되지 않았습니다.");
-    }
+    	  try {
+    	    const response = await fetch('/api/auth/password', {
+    	      method: 'PATCH',
+    	      headers: {
+    	        'Content-Type': 'application/json'
+    	      },
+    	      body: JSON.stringify({
+    	        currentPassword: currentPw,
+    	        newPassword: newPw
+    	      })
+    	    });
+
+    	    const result = await response.json().catch(() => null);
+
+    	    if (!response.ok || result?.result === false) {
+    	      warn(result?.message || "비밀번호 변경에 실패했습니다.");
+    	      return;
+    	    }
+
+    	    passwordModal.hide();
+    	    ok("비밀번호가 변경되었습니다.");
+
+    	  } catch (error) {
+    	    warn("서버 통신 중 오류가 발생했습니다.");
+    	  }
+    	}
 
     // 로그아웃
     function handleLogout() {

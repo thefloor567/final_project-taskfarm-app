@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.team4.taskfarm.common.config.JwtService;
 import com.team4.taskfarm.common.exception.CustomException;
+import com.team4.taskfarm.user.domain.auth.dto.ChangePasswordRequest;
 import com.team4.taskfarm.user.domain.auth.dto.LoginRequest;
 import com.team4.taskfarm.user.domain.auth.dto.LoginResponse;
 import com.team4.taskfarm.user.domain.auth.dto.SignupRequest;
@@ -79,6 +80,22 @@ public class AuthService {
         if (req.getNickname() != null) {
             user.updateNickname(req.getNickname());
         }
+    }
+
+    @Transactional
+    public void changePassword(Long userIdx, ChangePasswordRequest req) {
+        User user = userRepository.findById(userIdx)
+            .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
+
+        if (user.getDeleteDate() != null || user.getStatus() == User.Status.SUSPENDED) {
+            throw CustomException.unauthorized("탈퇴한 계정입니다.");
+        }
+
+        if (!passwordEncoder.matches(req.getCurrentPassword(), user.getPass())) {
+            throw CustomException.badRequest("현재 비밀번호가 일치하지 않습니다.");
+        }
+
+        user.updatePass(passwordEncoder.encode(req.getNewPassword()));
     }
 
     @Transactional
