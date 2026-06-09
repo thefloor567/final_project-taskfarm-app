@@ -25,13 +25,13 @@ public class FarmApiController extends UserBaseController {
     /** 농장 전체 스냅샷 */
     @GetMapping
     public ResponseEntity<ApiResponse<FarmResponse>> getFarm() {
-        return ok(farmService.getFarm(uid()));
+        return ok(farmService.getFarm(getCurrentUserIdx()));
     }
 
     /** 보유 씨앗 목록 (심을 씨앗 고르기) */
     @GetMapping("/inventory/seeds")
     public ResponseEntity<ApiResponse<List<SeedInvResponse>>> getSeedInventoryList() {
-        return ok(cultivationService.getSeedInventoryList(uid()));
+        return ok(cultivationService.getSeedInventoryList(getCurrentUserIdx()));
     }
 
     /** 씨앗 심기 */
@@ -39,33 +39,28 @@ public class FarmApiController extends UserBaseController {
     public ResponseEntity<ApiResponse<Void>> plantSeed(
             @PathVariable Long plotId,
             @Valid @RequestBody PlantRequest req) {
-        cultivationService.plantSeed(uid(), plotId, req.getSeedId());
+        cultivationService.plantSeed(getCurrentUserIdx(), plotId, req.getSeedId());
         return ok();
     }
 
     /** 물주기 */
     @PostMapping("/plots/{plotId}/water")
     public ResponseEntity<ApiResponse<Void>> waterPlot(@PathVariable Long plotId) {
-        cultivationService.waterPlot(uid(), plotId);
+        cultivationService.waterPlot(getCurrentUserIdx(), plotId);
         return ok();
     }
 
     /** 수확 */
     @PostMapping("/plots/{plotId}/harvest")
     public ResponseEntity<ApiResponse<Void>> harvestPlot(@PathVariable Long plotId) {
-        cultivationService.harvestPlot(uid(), plotId);
+        cultivationService.harvestPlot(getCurrentUserIdx(), plotId);
         return ok();
     }
 
     /** 시든 작물 제거 */
     @DeleteMapping("/plots/{plotId}/crop")
     public ResponseEntity<ApiResponse<Void>> removeCrop(@PathVariable Long plotId) {
-        cultivationService.removeCrop(uid(), plotId);
+        cultivationService.removeCrop(getCurrentUserIdx(), plotId);
         return ok();
-    }
-    
-    private Long uid() {
-        Long id = getCurrentUserIdx();
-        return id != null ? id : 1L;   // 인증 전이면 테스트 유저 1번
     }
 }
