@@ -27,6 +27,9 @@ public class FarmService {
     /** 신규 유저 농장 기본 밭 개수 */
     private static final int DEFAULT_PLOT_COUNT = 6;
     
+    /** 이벤트 체크 */
+    private final FarmEventService farmEventService;
+    
     /** 시듦 판정 */
     private final WitherChecker witherChecker;
 
@@ -70,11 +73,9 @@ public class FarmService {
         int cropCount = cropInvRepository.findByIdxFarm(farm.getIdxFarm()).stream()
                 .mapToInt(TbCropInv::getQty).sum();
 
-        // 5) 오늘의 이벤트 (있으면 표시, 없으면 null)
-        EventDto eventDto = farmEventRepository
-                .findByIdxUserAndEventDate(idxUser, LocalDate.now())
-                .map(this::toEventDto)
-                .orElse(null);
+        // 5) 오늘의 이벤트 (없으면 시드로 생성 — 스케줄러 없는 lazy)
+        TbFarmEvent todayEvent = farmEventService.getTodayEvent(idxUser);
+        EventDto eventDto = toEventDto(todayEvent);
 
         return FarmResponse.builder()
                 .farmId(farm.getIdxFarm())
@@ -97,15 +98,6 @@ public class FarmService {
         return farm;
     }
 
-    private EventDto toEventDto(TbFarmEvent e) {
-        return EventDto.builder()
-                .eventKey(e.getEventKey())
-                .title(EventCatalog.titleOf(e.getEventKey()))
-                .desc(EventCatalog.descOf(e.getEventKey()))
-                .dismissed(e.isDismissed())
-                .build();
-    }
-
     /**
      * 이벤트 키 → 표시 문구 매핑(임시 카탈로그).
      * TODO: 이벤트 도메인 본격 작업 시 tbEventConfig 기반으로 이관.
@@ -116,16 +108,29 @@ public class FarmService {
                 case "harvest_bonus" -> "🌟 풍년의 날";
                 case "rain"          -> "🌧️ 단비";
                 case "drought"       -> "☀️ 가뭄";
-                default              -> "🌱 평범한 하루";
+                case "storm"         -> "🌪️ 폭풍";
+                case "fertile"       -> "🌱 비옥한 땅";
+                default              -> "🌤️ 평범한 하루";   // normal 포함
             };
         }
         static String descOf(String key) {
             return switch (key) {
                 case "harvest_bonus" -> "오늘 수확하면 작물 +1 보너스!";
                 case "rain"          -> "물방울 소비 없이 물주기 가능!";
-                case "drought"       -> "물주기 효과가 절반이에요.";
+                case "drought"       -> "작물이 더 빨리 시들어요.";
+                case "storm"         -> "허수아비가 없으면 작물이 위험해요.";
+                case "fertile"       -> "오늘 심는 작물은 물주기 1회 감소!";
                 default              -> "오늘은 특별한 일이 없네요.";
             };
         }
+    }
+
+    private EventDto toEventDto(TbFarmEvent e) {
+        return EventDto.builder()
+                .eventKey(e.getEventKey())
+                .title(EventCatalog.titleOf(e.getEventKey()))
+                .desc(EventCatalog.descOf(e.getEventKey()))
+                .dismissed(e.isDismissed())
+                .build();
     }
 }
