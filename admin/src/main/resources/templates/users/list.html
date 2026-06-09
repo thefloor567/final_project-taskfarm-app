@@ -55,16 +55,16 @@
       location.href = '/admin/';
     }
 
-    // 🚧 더미. API(GET /api/admin/users) 나오면 교체.
-    const users = [
-      { userId: 1, nickname: '초록농부', email: 'green@taskfarm.com', level: 5, doneCount: 47, joinDate: '2025-05-12' },
-      { userId: 2, nickname: '부지런쟁이', email: 'busy@taskfarm.com', level: 8, doneCount: 92, joinDate: '2025-04-03' },
-      { userId: 3, nickname: '작심삼일', email: 'three@taskfarm.com', level: 2, doneCount: 11, joinDate: '2025-06-01' },
-      { userId: 4, nickname: '농사왕', email: 'king@taskfarm.com', level: 12, doneCount: 203, joinDate: '2025-02-20' },
-    ];
+    let users = [];
 
     document.addEventListener('DOMContentLoaded', function () {
-      render(users);
+      fetch('/admin/api/users')
+        .then(res => res.json())
+        .then(res => {
+          users = res.data;
+          render(users);
+        })
+        .catch(err => console.error(err));
     });
 
     function render(list) {
