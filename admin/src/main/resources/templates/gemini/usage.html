@@ -125,54 +125,41 @@
       location.href = '/admin/';
     }
 
-    // 🚧 더미. API(GET /api/admin/gemini/usage) 나오면 교체.
-    const g = {
-      totalRequests: 3420,   // 유저가 추천버튼 누른 총 횟수
-      actualCalls: 1231,     // 실제 Gemini API 호출(캐시 미스)
-      costPerCall: 0.0012,   // 호출당 단가(예시)
-      daily: {
-        labels: ['6/1', '6/2', '6/3', '6/4', '6/5', '6/6', '6/7'],
-        cache: [320, 410, 380, 450, 520, 390, 340],   // 캐시 히트
-        actual: [180, 160, 200, 190, 230, 150, 121],   // 실호출
-      }
-    };
-
     document.addEventListener('DOMContentLoaded', function () {
-      const cacheHits = g.totalRequests - g.actualCalls;
-      const cacheRate = Math.round(cacheHits / g.totalRequests * 100);
-      const monthCost = g.actualCalls * g.costPerCall;
-      const savedCost = cacheHits * g.costPerCall;
-
-      document.getElementById('totalRequests').textContent = g.totalRequests.toLocaleString();
-      document.getElementById('cacheRate').textContent = cacheRate + '%';
-      document.getElementById('actualCalls').textContent = g.actualCalls.toLocaleString();
-      document.getElementById('monthCost').textContent = '$' + monthCost.toFixed(2);
-      document.getElementById('savedCalls').textContent = cacheHits.toLocaleString();
-      document.getElementById('savedCost').textContent = '$' + savedCost.toFixed(2);
-
-      renderCharts();
+      fetch('/admin/api/gemini/usage')
+        .then(res => res.json())
+        .then(res => {
+          const g = res.data;
+          document.getElementById('totalRequests').textContent = g.totalRequests.toLocaleString();
+          document.getElementById('cacheRate').textContent = g.cacheRate + '%';
+          document.getElementById('actualCalls').textContent = g.actualCalls.toLocaleString();
+          document.getElementById('monthCost').textContent = '$' + g.monthCost.toFixed(2);
+          document.getElementById('savedCalls').textContent = g.cacheHits.toLocaleString();
+          document.getElementById('savedCost').textContent = '$' + g.savedCost.toFixed(2);
+          renderCharts(g);
+        })
+        .catch(err => console.error(err));
     });
 
-    function renderCharts() {
+    function renderCharts(g) {
       if (typeof ApexCharts === 'undefined') { console.warn('ApexCharts 없음'); return; }
 
       // 일별 호출 추이 (스택 막대: 캐시 vs 실호출)
       new ApexCharts(document.getElementById('callTrend'), {
         series: [
-          { name: '캐시 히트', data: g.daily.cache },
-          { name: '실제 호출', data: g.daily.actual }
+          { name: '캐시 히트', data: g.dailyCache },
+          { name: '실제 호출', data: g.dailyActual }
         ],
         chart: { type: 'bar', height: 320, stacked: true, toolbar: { show: false } },
         plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
         colors: ['#0BB783', '#FFA800'],
-        xaxis: { categories: g.daily.labels },
+        xaxis: { categories: g.dailyLabels },
         legend: { position: 'top' }, dataLabels: { enabled: false }
       }).render();
 
       // 캐시 효율 도넛
-      const cacheHits = g.totalRequests - g.actualCalls;
       new ApexCharts(document.getElementById('cacheDonut'), {
-        series: [cacheHits, g.actualCalls],
+        series: [g.cacheHits, g.actualCalls],
         chart: { type: 'donut', height: 280 },
         labels: ['캐시 절약', '실제 호출'],
         colors: ['#0BB783', '#FFA800'],

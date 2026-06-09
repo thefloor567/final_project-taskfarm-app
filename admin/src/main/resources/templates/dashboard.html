@@ -117,16 +117,24 @@
           document.getElementById('totalUsers').textContent = d.totalUsers.toLocaleString();
           document.getElementById('newUsers').textContent = '+' + d.todayUsers + ' 오늘';
           document.getElementById('completionRate').textContent = d.completionRate + '%';
-          // Gemini는 API 미구현 — 추후 연결
-          document.getElementById('geminiCalls').textContent = '-';
-          document.getElementById('cacheRate').textContent = '캐시 적중 -';
-          document.getElementById('geminiCost').textContent = '$-';
-          renderCharts(d.signupLabels, d.signupData);
+          renderSignupChart(d.signupLabels, d.signupData);
+        })
+        .catch(err => console.error(err));
+
+      // Gemini 사용량 (tbAiLog 기반)
+      fetch('/admin/api/gemini/usage')
+        .then(res => res.json())
+        .then(res => {
+          const g = res.data;
+          document.getElementById('geminiCalls').textContent = g.totalRequests.toLocaleString();
+          document.getElementById('cacheRate').textContent = '캐시 적중 ' + g.cacheRate + '%';
+          document.getElementById('geminiCost').textContent = '$' + g.monthCost.toFixed(2);
+          renderCacheChart(g.cacheHits, g.actualCalls);
         })
         .catch(err => console.error(err));
     });
 
-    function renderCharts(signupLabels, signupData) {
+    function renderSignupChart(signupLabels, signupData) {
       if (typeof ApexCharts === 'undefined') { console.warn('ApexCharts 없음'); return; }
 
       new ApexCharts(document.getElementById('signupChart'), {
@@ -138,10 +146,12 @@
         xaxis: { categories: signupLabels },
         dataLabels: { enabled: false }
       }).render();
+    }
 
-      // Gemini 캐시 차트 — 데이터 없을 때 placeholder
+    function renderCacheChart(cacheHits, actualCalls) {
+      if (typeof ApexCharts === 'undefined') return;
       new ApexCharts(document.getElementById('cacheChart'), {
-        series: [0, 100],
+        series: [cacheHits, actualCalls],
         chart: { type: 'donut', height: 260 },
         labels: ['캐시 적중', '신규 호출'],
         colors: ['#0BB783', '#FFA800'],
