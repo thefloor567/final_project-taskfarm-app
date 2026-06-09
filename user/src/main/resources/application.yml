@@ -4,6 +4,15 @@ server:
 spring:
   application:
     name: taskfarm-user
+    
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      username: ${REDIS_USERNAME:default}
+      password: ${REDIS_PASSWORD}
+      ssl:
+        enabled: false
 
   # ── DB (admin앱과 같은 RDS 공유) ──
   datasource:
@@ -49,7 +58,10 @@ management:
       probes:
         enabled: true
         
-        
+gemini:
+  api-key: ${GEMINI_API_KEY}
+  model: gemini-2.5-flash
+          
 #farm:
 #  wither-minutes: 1440      # 운영 기본 24시간(=1440분)
   
