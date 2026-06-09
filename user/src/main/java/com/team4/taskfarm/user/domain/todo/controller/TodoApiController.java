@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.team4.taskfarm.common.response.ApiResponse;
 import com.team4.taskfarm.user.common.UserBaseController;
+import com.team4.taskfarm.user.domain.ai.dto.AiRecommendJobResult;
 import com.team4.taskfarm.user.domain.todo.dto.TodoRequest;
 import com.team4.taskfarm.user.domain.todo.dto.TodoResponse;
 import com.team4.taskfarm.user.domain.todo.service.TodoService;
@@ -38,15 +39,15 @@ public class TodoApiController extends UserBaseController {
 	        @RequestParam(required = false) Long idxCat,
 	        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDate
 			){
-		Long idxUser = getCurrentUserIdx();
-		return ok(todoService.getTodoList(idxUser, isDone, idxCat, dueDate));
+
+		return ok(todoService.getTodoList(uid(), isDone, idxCat, dueDate));
 	}
 	
 	// 할일 단건 조회
 	@GetMapping("/{idxTodo}")
 	public ResponseEntity<ApiResponse<TodoResponse>> getTodo(@PathVariable Long idxTodo) {
-		Long idxUser = getCurrentUserIdx();
-	    return ok(todoService.getTodo(idxUser, idxTodo));
+
+	    return ok(todoService.getTodo(uid(), idxTodo));
 	}
 	
 	// 할일 생성
@@ -54,8 +55,8 @@ public class TodoApiController extends UserBaseController {
 	public ResponseEntity<ApiResponse<TodoResponse>> createTodo(
 				@Valid @RequestBody TodoRequest request
 			) {
-		Long idxUser = getCurrentUserIdx();
-		return ok(todoService.createTodo(idxUser, request));
+
+		return ok(todoService.createTodo(uid(), request));
 	}
 	
 	// 할일 수정
@@ -64,8 +65,8 @@ public class TodoApiController extends UserBaseController {
 				@PathVariable Long idxTodo,
 				@Valid @RequestBody TodoRequest request
 			) {
-		Long idxUser = getCurrentUserIdx();
-		return ok(todoService.updateTodo(idxUser, idxTodo, request));
+
+		return ok(todoService.updateTodo(uid(), idxTodo, request));
 	}
 	
 	// 할일 삭제
@@ -73,8 +74,8 @@ public class TodoApiController extends UserBaseController {
 	public ResponseEntity<ApiResponse<Void>> deleteTodo(
 				@PathVariable Long idxTodo
 			){
-		Long idxUser = getCurrentUserIdx();
-		todoService.deleteTodo(idxUser, idxTodo);
+
+		todoService.deleteTodo(uid(), idxTodo);
 		return ok();
 	}
 	
@@ -83,8 +84,8 @@ public class TodoApiController extends UserBaseController {
 	public ResponseEntity<ApiResponse<TodoResponse>> completeTodo(
 				@PathVariable Long idxTodo
 			){
-		Long idxUser = getCurrentUserIdx();
-		return ok(todoService.completeTodo(idxUser, idxTodo));
+
+		return ok(todoService.completeTodo(uid(), idxTodo));
 	}
 	
 	// 할일 완료 해제
@@ -92,7 +93,27 @@ public class TodoApiController extends UserBaseController {
 	public ResponseEntity<ApiResponse<TodoResponse>> incompleteTodo(
 	        @PathVariable Long idxTodo
 	) {
-		Long idxUser = getCurrentUserIdx();
-	    return ok(todoService.incompleteTodo(idxUser, idxTodo));
+
+	    return ok(todoService.incompleteTodo(uid(), idxTodo));
 	}
+	
+	// AI 경험치 추천 비동기 접수
+	@PostMapping("/{idxTodo}/recommend")
+	public ResponseEntity<ApiResponse<AiRecommendJobResult>> requestRecommendExp(
+	        @PathVariable Long idxTodo
+	) {
+	    return ok(todoService.requestRecommendExp(uid(), idxTodo));
+	}
+
+	// AI 경험치 추천 작업 결과 조회
+	@GetMapping("/recommend/jobs/{jobId}")
+	public ResponseEntity<ApiResponse<AiRecommendJobResult>> getRecommendExpJobResult(
+	        @PathVariable String jobId
+	) {
+	    return ok(todoService.getRecommendExpJobResult(jobId));
+	}
+	
+	// 유저 가져오는 메서드
+	private Long uid() { Long id = getCurrentUserIdx(); return id;} 
+	
 }

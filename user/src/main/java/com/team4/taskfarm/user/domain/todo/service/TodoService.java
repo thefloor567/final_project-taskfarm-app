@@ -9,8 +9,13 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.team4.taskfarm.common.entity.ai.TbAiLog;
 import com.team4.taskfarm.common.entity.todo.TbTodo;
 import com.team4.taskfarm.common.exception.CustomException;
+import com.team4.taskfarm.user.domain.ai.dto.AiRecommendJobRequest;
+import com.team4.taskfarm.user.domain.ai.dto.AiRecommendJobResult;
+import com.team4.taskfarm.user.domain.ai.repository.AiLogRepository;
+import com.team4.taskfarm.user.domain.ai.service.AiRecommendQueueService;
 import com.team4.taskfarm.user.domain.category.entity.Category;
 import com.team4.taskfarm.user.domain.category.repository.CategoryRepository;
 import com.team4.taskfarm.user.domain.todo.dto.TodoRequest;
@@ -27,6 +32,12 @@ public class TodoService {
 	
 	// 카테고리 이름 조회용
 	private final CategoryRepository categoryRepository;
+	
+	// Todo별 최신 AI 추천 경험치 조회용
+	private final AiLogRepository aiLogRepository;
+	
+	// AI 추천 작업 Redis 큐 접수/조회용
+	private final AiRecommendQueueService aiRecommendQueueService;
 	
 	// 할일 가져오기
 	@Transactional(readOnly = true)
@@ -84,9 +95,7 @@ public class TodoService {
 			}
 		}
 		
-		// 현재 유저의 카테고리 목록을 한 번만 조회해서
-        // idxCat -> categoryName 형태의 Map으로 변환한다.
-        // Todo마다 categoryRepository를 호출하면 N+1처럼 조회가 많아질 수 있어서 이 방식이 더 낫다.
+		// 현재 유저의 카테고리 목록을 한 번만 조회
         Map<Long, String> categoryNameMap = categoryRepository.findByIdxUserAndDeleteDateIsNull(idxUser)
                 .stream()
                 .collect(Collectors.toMap(
@@ -96,8 +105,10 @@ public class TodoService {
 
         // TodoResponse에 categoryName까지 포함해서 반환한다.
         return todo.stream()
-                .map(t -> TodoResponse.from(t, getCategoryNameFromMap(t.getIdxCat(), categoryNameMap)))
-                .toList();
+                .map(t -> TodoResponse.from(
+                        t,
+                        getCategoryNameFromMap(t.getIdxCat(), categoryNameMap),
+                        getLatestRewardExp(idxUser, t.getIdxTodo()))).toList();
     }
 	
 	// 단건 조회
@@ -105,7 +116,8 @@ public class TodoService {
 	public TodoResponse getTodo(Long idxUser, Long idxTodo) {
 	    TbTodo todo = findTodo(idxUser, idxTodo);
 	    String categoryName = getCategoryName(idxUser, todo.getIdxCat());
-	    return TodoResponse.from(todo, categoryName);
+	    int rewardExp = getLatestRewardExp(idxUser, idxTodo);
+	    return TodoResponse.from(todo, categoryName, rewardExp);
 	}
 	
 	// 할일 생성 (엔티티로 바꿔서 repo에 저장)
@@ -122,7 +134,7 @@ public class TodoService {
 		
 		TbTodo savedTodo = todoRepository.save(todo);
 		String categoryName = getCategoryName(idxUser, savedTodo.getIdxCat());
-		return TodoResponse.from(savedTodo, categoryName);
+		return TodoResponse.from(savedTodo, categoryName, 0);
 	}
 	
 	// findTodo에서 찾아오고 업데이트
@@ -131,7 +143,8 @@ public class TodoService {
 		TbTodo todo = findTodo(idxUser, idxTodo);
 		todo.update(request.getIdxCat(), request.getTitle(), request.getContent(), request.getPriority(), request.getDueDate());
 		String categoryName = getCategoryName(idxUser, todo.getIdxCat());
-		return TodoResponse.from(todo, categoryName);
+		int rewardExp = getLatestRewardExp(idxUser, todo.getIdxTodo());
+		return TodoResponse.from(todo, categoryName, rewardExp);
 	}
 	
 	// findTodo에서 찾아오고 지우기
@@ -148,16 +161,19 @@ public class TodoService {
 		TbTodo todo = findTodo(idxUser, idxTodo);
 		todo.complete();
 		String categoryName = getCategoryName(idxUser, todo.getIdxCat());
-		return TodoResponse.from(todo, categoryName);
+		int rewardExp = getLatestRewardExp(idxUser, todo.getIdxTodo());
+		return TodoResponse.from(todo, categoryName, rewardExp);
 	}
 	
 	// 할일 완료 해제
+	// 생각 필요 => 할일 해제 시 기존에 들어갔던 경험치는 유저의 경험치에서 빼지 않고, 나중에 이 할일 다시 완료 시 경험치 지급 X
 	@Transactional
 	public TodoResponse incompleteTodo(Long idxUser, Long idxTodo) {
 	    TbTodo todo = findTodo(idxUser, idxTodo);
 	    todo.incomplete();
 	    String categoryName = getCategoryName(idxUser, todo.getIdxCat());
-	    return TodoResponse.from(todo, categoryName);
+	    int rewardExp = getLatestRewardExp(idxUser, todo.getIdxTodo());
+	    return TodoResponse.from(todo, categoryName, rewardExp);
 	}
 	
 	// repo에서 idxUser와 idxTodo로 해당 사용자의 할일 찾아오기
@@ -186,5 +202,38 @@ public class TodoService {
 				.findByIdxCatAndIdxUserAndDeleteDateIsNull(idxCat, idxUser)
 				.map(Category::getName)
 				.orElse("미분류");
+	}
+	
+	// AI 추천 기록이 있으면 RewardExp 반환
+	private int getLatestRewardExp(Long idxUser, Long idxTodo) {
+	    return aiLogRepository
+	            .findTopByIdxUserAndIdxTodoOrderByCreateDateDesc(idxUser, idxTodo)
+	            .map(TbAiLog::getRewardExp)
+	            .orElse(0);
+	}
+	
+	// AI 경험치 추천 비동기 접수
+	@Transactional(readOnly = true)
+	public AiRecommendJobResult requestRecommendExp(Long idxUser, Long idxTodo) {
+	    TbTodo todo = findTodo(idxUser, idxTodo);
+
+	    String categoryName = getCategoryName(idxUser, todo.getIdxCat());
+
+	    AiRecommendJobRequest request = new AiRecommendJobRequest(
+	            null, // jobId는 QueueService에서 생성
+	            idxUser,
+	            idxTodo,
+	            categoryName,
+	            todo.getPriority(),
+	            todo.getTitle()
+	    );
+
+	    return aiRecommendQueueService.enqueue(request);
+	}
+	
+	// AI 경험치 추천 작업 결과 조회
+	@Transactional(readOnly = true)
+	public AiRecommendJobResult getRecommendExpJobResult(String jobId) {
+	    return aiRecommendQueueService.getJobResult(jobId);
 	}
 }

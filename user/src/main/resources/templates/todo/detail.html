@@ -196,14 +196,10 @@
     }
 
     function renderRewardExp(rewardExp) {
-      if (rewardExp && rewardExp > 0) {
-        document.getElementById('expResult').innerHTML = `
-          <div style="font-size:40px;">⭐</div>
-          <div class="fw-bolder fs-2x text-primary mt-2">+${rewardExp} XP</div>
-          <p class="fs-7 text-gray-500 mt-2">완료 시 받게 될 경험치예요</p>
-        `;
-      }
-    }
+    	  if (rewardExp && rewardExp > 0) {
+    	    renderRecommendExp(rewardExp, null);
+    	  }
+    	}
 
     function formatDate(value) {
       if (!value) {
@@ -213,32 +209,37 @@
       return value.substring(0, 10);
     }
 
-    // AI 경험치 추천
-    // 현재 recommend-exp/test API가 없으면 이 함수는 에러가 날 수 있음
+ 	// AI 경험치 추천 요청
     async function recommendExp() {
       const btn = document.getElementById('recommendBtn');
 
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>AI가 계산 중...';
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>AI 추천 접수 중...';
 
       try {
-        const res = await fetch(`/api/todos/${todoId}/recommend-exp/test`, {
+        // 1. 추천 작업 접수
+        // 이 API는 바로 경험치를 주는 게 아니라 jobId를 반환한다.
+        const res = await fetch(`/api/todos/${todoId}/recommend`, {
           method: 'POST'
         });
 
         const body = await res.json();
 
         if (!res.ok || body.result === false) {
-          throw new Error(body.message || '경험치 추천 실패');
+          throw new Error(body.message || '경험치 추천 요청 실패');
         }
 
-        const xp = body.data;
+        const job = body.data;
 
-        document.getElementById('expResult').innerHTML = `
-          <div style="font-size:40px;">⭐</div>
-          <div class="fw-bolder fs-2x text-primary mt-2">+${xp} XP</div>
-          <p class="fs-7 text-gray-500 mt-2">완료 시 받게 될 경험치예요</p>
-        `;
+        if (!job || !job.jobId) {
+          throw new Error('추천 작업 번호를 받을 수 없습니다.');
+        }
+
+        // 2. 버튼 문구 변경
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>AI가 계산 중...';
+
+        // 3. jobId로 결과 폴링 시작
+        pollRecommendResult(job.jobId, btn);
 
       } catch (e) {
         btn.disabled = false;
@@ -249,12 +250,106 @@
           icon: "error",
           buttonsStyling: false,
           confirmButtonText: "확인",
-          customClass: {
-            confirmButton: "btn btn-primary"
-          }
+          customClass: { confirmButton: "btn btn-primary" }
         });
       }
     }
+ 
+	 // AI 추천 결과를 주기적으로 조회하는 함수
+    function pollRecommendResult(jobId, btn) {
+      let tryCount = 0;
+      const maxTryCount = 20; // 1초 간격 기준 최대 20초 대기
+
+      const timer = setInterval(async function () {
+        tryCount++;
+
+        try {
+          const res = await fetch(`/api/todos/recommend/jobs/${jobId}`);
+          const body = await res.json();
+
+          if (!res.ok || body.result === false) {
+            throw new Error(body.message || '추천 결과 조회 실패');
+          }
+
+          const job = body.data;
+
+          // 1. 아직 처리 중이면 계속 기다림
+          if (job.status === 'PENDING') {
+            if (tryCount >= maxTryCount) {
+              clearInterval(timer);
+              btn.disabled = false;
+              btn.innerHTML = '경험치 추천받기';
+
+              Swal.fire({
+                text: "AI 추천 처리가 지연되고 있습니다. 잠시 후 다시 시도해주세요.",
+                icon: "warning",
+                buttonsStyling: false,
+                confirmButtonText: "확인",
+                customClass: { confirmButton: "btn btn-primary" }
+              });
+            }
+
+            return;
+          }
+
+          // 2. 처리 성공
+          if (job.status === 'DONE') {
+            clearInterval(timer);
+
+            renderRecommendExp(job.rewardExp, job.isCache);
+
+            return;
+          }
+
+          // 3. 처리 실패
+          if (job.status === 'FAILED') {
+            clearInterval(timer);
+
+            btn.disabled = false;
+            btn.innerHTML = '경험치 추천받기';
+
+            Swal.fire({
+              text: job.message || "AI 경험치 추천에 실패했습니다.",
+              icon: "error",
+              buttonsStyling: false,
+              confirmButtonText: "확인",
+              customClass: { confirmButton: "btn btn-primary" }
+            });
+          }
+
+        } catch (e) {
+          clearInterval(timer);
+
+          btn.disabled = false;
+          btn.innerHTML = '경험치 추천받기';
+
+          Swal.fire({
+            text: e.message,
+            icon: "error",
+            buttonsStyling: false,
+            confirmButtonText: "확인",
+            customClass: { confirmButton: "btn btn-primary" }
+          });
+        }
+      }, 1000);
+    }
+
+    // 추천 경험치 화면 표시
+    function renderRecommendExp(xp, isCache) {
+  		let message = '완료 시 받게 될 경험치예요';
+
+  		if (isCache === true) {
+    		message = '이전 추천 결과를 빠르게 불러왔어요';
+  		} else if (isCache === false) {
+    		message = 'AI가 새로 계산한 경험치예요';
+  		}
+
+  		document.getElementById('expResult').innerHTML = `
+    		<div style="font-size:40px;">⭐</div>
+    		<div class="fw-bolder fs-2x text-primary mt-2">+${xp} XP</div>
+    		<p class="fs-7 text-gray-500 mt-2">${message}</p>
+  		`;
+	}
 
     async function completeTodo() {
       try {

@@ -19,6 +19,8 @@ public class TodoResponse {
 	private String content;
 	private TbTodo.Priority priority;
 	
+	// 경험치를 화면에 출력하기 위해 사용
+	private int rewardExp;
 	// 카테고리 이름을 출력하기 위해 사용
 	private String categoryName;
 	
@@ -30,7 +32,7 @@ public class TodoResponse {
 	private LocalDateTime updateDate;
 	
 	// DB에서 가져온 TbTodo 엔티티를 TodoResponse DTO로 바꿔주는 메서드
-	public static TodoResponse from(TbTodo todo, String categoryName) {
+	public static TodoResponse from(TbTodo todo, String categoryName, int rewardExp) {
 		return TodoResponse.builder()
 						.idxTodo(todo.getIdxTodo())
 						.idxUser(todo.getIdxUser())
@@ -38,6 +40,7 @@ public class TodoResponse {
 						.title(todo.getTitle())
 						.content(todo.getContent())
 						.priority(todo.getPriority())
+						.rewardExp(rewardExp)
 						.categoryName(categoryName)
 						.isDone(todo.isDone())
 						.dueDate(todo.getDueDate())
