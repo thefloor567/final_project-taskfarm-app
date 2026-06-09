@@ -21,7 +21,7 @@ public class ToolShopController extends UserBaseController {
     /** 도구 진열 목록 (잠김 표시 포함) */
     @GetMapping
     public ResponseEntity<ApiResponse<List<ToolShopItemResponse>>> getToolShopList() {
-        return ok(toolShopService.getToolShopList(uid()));
+        return ok(toolShopService.getToolShopList(getCurrentUserIdx()));
     }
 
     /** 도구 구매 + 즉시 효과. 비료는 body.targetPlotId 필요. */
@@ -30,12 +30,7 @@ public class ToolShopController extends UserBaseController {
             @PathVariable Long toolId,
             @RequestBody(required = false) BuyToolRequest req) {
         Long targetPlotId = (req != null) ? req.getTargetPlotId() : null;
-        toolShopService.buyTool(uid(), toolId, targetPlotId);
+        toolShopService.buyTool(getCurrentUserIdx(), toolId, targetPlotId);
         return ok();
-    }
-    
-    private Long uid() {
-        Long id = getCurrentUserIdx();
-        return id != null ? id : 1L;   // 인증 전이면 테스트 유저 1번
     }
 }

@@ -20,18 +20,13 @@ public class OrderController extends UserBaseController {
     /** 주민 주문 목록 (슬롯 비면 자동 채움) */
     @GetMapping
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getOrders() {
-        return ok(orderService.getOrders(uid()));
+        return ok(orderService.getOrders(getCurrentUserIdx()));
     }
 
     /** 주문 이행 (작물 납품 → 코인 획득) */
     @PostMapping("/{orderId}/fulfill")
     public ResponseEntity<ApiResponse<Void>> fulfillOrder(@PathVariable Long orderId) {
-        orderService.fulfillOrder(uid(), orderId);
+        orderService.fulfillOrder(getCurrentUserIdx(), orderId);
         return ok();
-    }
-    
-    private Long uid() {
-        Long id = getCurrentUserIdx();
-        return id != null ? id : 1L;   // 인증 전이면 테스트 유저 1번
     }
 }
