@@ -45,6 +45,15 @@ public class TbFarmEvent {
     private LocalDateTime createDate;
 
     // ✏️ TODO: dismiss()
+    /** (유저+날짜) 이벤트 발생 기록 생성. 시드로 뽑은 eventKey 저장. */
+    public static TbFarmEvent create(Long idxUser, String eventKey, java.time.LocalDate date) {
+        TbFarmEvent e = new TbFarmEvent();
+        e.idxUser = idxUser;
+        e.eventKey = eventKey;
+        e.eventDate = date;
+        e.isDismissed = false;
+        return e;
+    }
     
     /** 당일 이벤트 무효화(온실 보호 등). IsDismissed = true */
     public void dismiss() {
