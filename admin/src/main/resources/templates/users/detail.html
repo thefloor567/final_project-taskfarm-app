@@ -94,34 +94,32 @@
     // 컨트롤러가 넘긴 userId
     const userId = /*[[${userId}]]*/ 1;
 
-    // 🚧 더미. API(GET /api/admin/users/{id}) 나오면 교체.
-    const detail = {
-      nickname: '초록농부', email: 'green@taskfarm.com', level: 5,
-      joinDate: '2025-05-12', doneCount: 47, completionRate: 78,
-      totalXp: 820, cropCount: 15,
-      activity: { labels: ['월', '화', '수', '목', '금', '토', '일'], data: [2, 4, 3, 5, 1, 6, 4] }
-    };
-
     document.addEventListener('DOMContentLoaded', function () {
-      document.getElementById('nickname').textContent = detail.nickname;
-      document.getElementById('email').textContent = detail.email;
-      document.getElementById('level').textContent = 'Lv.' + detail.level;
-      document.getElementById('joinDate').textContent = '가입일 ' + detail.joinDate;
-      document.getElementById('doneCount').textContent = detail.doneCount;
-      document.getElementById('completionRate').textContent = detail.completionRate + '%';
-      document.getElementById('totalXp').textContent = detail.totalXp.toLocaleString();
-      document.getElementById('cropCount').textContent = detail.cropCount;
+      fetch('/admin/api/users/' + userId)
+        .then(res => res.json())
+        .then(res => {
+          const d = res.data;
+          document.getElementById('nickname').textContent = d.nickname;
+          document.getElementById('email').textContent = d.email;
+          document.getElementById('level').textContent = 'Lv.' + d.level;
+          document.getElementById('joinDate').textContent = '가입일 ' + d.joinDate;
+          document.getElementById('doneCount').textContent = d.doneCount;
+          document.getElementById('completionRate').textContent = d.completionRate + '%';
+          document.getElementById('totalXp').textContent = d.totalXp.toLocaleString();
+          document.getElementById('cropCount').textContent = d.cropCount;
 
-      if (typeof ApexCharts !== 'undefined') {
-        new ApexCharts(document.getElementById('activityChart'), {
-          series: [{ name: '완료', data: detail.activity.data }],
-          chart: { type: 'bar', height: 280, toolbar: { show: false } },
-          plotOptions: { bar: { borderRadius: 6, columnWidth: '45%' } },
-          colors: ['#3699FF'],
-          xaxis: { categories: detail.activity.labels },
-          dataLabels: { enabled: false }
-        }).render();
-      }
+          if (typeof ApexCharts !== 'undefined') {
+            new ApexCharts(document.getElementById('activityChart'), {
+              series: [{ name: '완료', data: d.activityData }],
+              chart: { type: 'bar', height: 280, toolbar: { show: false } },
+              plotOptions: { bar: { borderRadius: 6, columnWidth: '45%' } },
+              colors: ['#3699FF'],
+              xaxis: { categories: d.activityLabels },
+              dataLabels: { enabled: false }
+            }).render();
+          }
+        })
+        .catch(err => console.error(err));
     });
   </script>
 </body>
