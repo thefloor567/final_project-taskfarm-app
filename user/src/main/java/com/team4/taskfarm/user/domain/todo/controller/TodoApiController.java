@@ -38,14 +38,14 @@ public class TodoApiController extends UserBaseController {
 	        @RequestParam(required = false) Long idxCat,
 	        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDate
 			){
-		Long idxUser = 2L;
+		Long idxUser = getCurrentUserIdx();
 		return ok(todoService.getTodoList(idxUser, isDone, idxCat, dueDate));
 	}
 	
 	// 할일 단건 조회
 	@GetMapping("/{idxTodo}")
 	public ResponseEntity<ApiResponse<TodoResponse>> getTodo(@PathVariable Long idxTodo) {
-		Long idxUser = 2L;
+		Long idxUser = getCurrentUserIdx();
 	    return ok(todoService.getTodo(idxUser, idxTodo));
 	}
 	
@@ -54,7 +54,7 @@ public class TodoApiController extends UserBaseController {
 	public ResponseEntity<ApiResponse<TodoResponse>> createTodo(
 				@Valid @RequestBody TodoRequest request
 			) {
-		Long idxUser = 2L;
+		Long idxUser = getCurrentUserIdx();
 		return ok(todoService.createTodo(idxUser, request));
 	}
 	
@@ -64,7 +64,7 @@ public class TodoApiController extends UserBaseController {
 				@PathVariable Long idxTodo,
 				@Valid @RequestBody TodoRequest request
 			) {
-		Long idxUser = 2L;
+		Long idxUser = getCurrentUserIdx();
 		return ok(todoService.updateTodo(idxUser, idxTodo, request));
 	}
 	
@@ -73,7 +73,7 @@ public class TodoApiController extends UserBaseController {
 	public ResponseEntity<ApiResponse<Void>> deleteTodo(
 				@PathVariable Long idxTodo
 			){
-		Long idxUser = 2L;
+		Long idxUser = getCurrentUserIdx();
 		todoService.deleteTodo(idxUser, idxTodo);
 		return ok();
 	}
@@ -83,7 +83,7 @@ public class TodoApiController extends UserBaseController {
 	public ResponseEntity<ApiResponse<TodoResponse>> completeTodo(
 				@PathVariable Long idxTodo
 			){
-		Long idxUser = 2L;
+		Long idxUser = getCurrentUserIdx();
 		return ok(todoService.completeTodo(idxUser, idxTodo));
 	}
 	
@@ -92,7 +92,7 @@ public class TodoApiController extends UserBaseController {
 	public ResponseEntity<ApiResponse<TodoResponse>> incompleteTodo(
 	        @PathVariable Long idxTodo
 	) {
-		Long idxUser = 2L;
+		Long idxUser = getCurrentUserIdx();
 	    return ok(todoService.incompleteTodo(idxUser, idxTodo));
 	}
 }
