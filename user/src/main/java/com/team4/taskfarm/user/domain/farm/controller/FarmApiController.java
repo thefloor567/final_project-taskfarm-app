@@ -2,6 +2,7 @@ package com.team4.taskfarm.user.domain.farm.controller;
 
 import com.team4.taskfarm.common.response.ApiResponse;
 import com.team4.taskfarm.user.common.UserBaseController;
+import com.team4.taskfarm.user.domain.farm.dto.CropInvResponse;
 import com.team4.taskfarm.user.domain.farm.dto.FarmResponse;
 import com.team4.taskfarm.user.domain.farm.dto.PlantRequest;
 import com.team4.taskfarm.user.domain.farm.dto.SeedInvResponse;
@@ -62,5 +63,11 @@ public class FarmApiController extends UserBaseController {
     public ResponseEntity<ApiResponse<Void>> removeCrop(@PathVariable Long plotId) {
         cultivationService.removeCrop(getCurrentUserIdx(), plotId);
         return ok();
+    }
+    
+    /** 보유 수확 작물 목록 */
+    @GetMapping("/inventory/crops")
+    public ResponseEntity<ApiResponse<List<CropInvResponse>>> getCropInventoryList() {
+        return ok(cultivationService.getCropInventoryList(getCurrentUserIdx()));
     }
 }

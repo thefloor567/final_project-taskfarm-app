@@ -5,13 +5,15 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.team4.taskfarm.common.entity.todo.TbTodo;
 import com.team4.taskfarm.common.entity.todo.QTbTodo;
 
+import lombok.RequiredArgsConstructor;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
-
+@RequiredArgsConstructor
 public class TodoRepositoryImpl implements TodoRepositoryCustom {
 	
-	private final JPAQueryFactory queryFactory = null;
+	private final JPAQueryFactory queryFactory;
 	private static final QTbTodo todo = QTbTodo.tbTodo;
 	
 	public List<TbTodo> search(Long idxUser, Boolean isDone, Long idxCat, LocalDateTime start, LocalDateTime end){

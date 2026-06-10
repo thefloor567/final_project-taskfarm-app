@@ -2,6 +2,7 @@ package com.team4.taskfarm.user.domain.farm.service;
 
 import com.team4.taskfarm.common.entity.farm.*;
 import com.team4.taskfarm.common.exception.CustomException;
+import com.team4.taskfarm.user.domain.farm.dto.CropInvResponse;
 import com.team4.taskfarm.user.domain.farm.dto.SeedInvResponse;
 import com.team4.taskfarm.user.domain.farm.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -138,6 +139,35 @@ public class FarmCultivationService {
                     .name(s != null ? s.getName() : "씨앗")
                     .waters(s != null ? s.getWaters() : 0)
                     .qty(i.getQty())
+                    .build();
+        }).toList();
+    }
+    
+    /**
+     * 보유 수확 작물 목록 (인벤토리 화면).
+     */
+    @Transactional(readOnly = true)
+    public List<CropInvResponse> getCropInventoryList(Long idxUser) {
+        TbFarm farm = farmRepository.findByIdxUser(idxUser)
+                .orElseThrow(() -> CustomException.notFound("농장을 찾을 수 없습니다."));
+
+        List<TbCropInv> invs = cropInvRepository.findByIdxFarm(farm.getIdxFarm()).stream()
+                .filter(i -> i.getQty() > 0)
+                .toList();
+        if (invs.isEmpty()) return List.of();
+
+        // 작물 이름·코드 한 번에 (N+1 방지)
+        List<Long> seedIds = invs.stream().map(TbCropInv::getIdxSeed).distinct().toList();
+        Map<Long, TbSeed> seedById = seedRepository.findByIdxSeedIn(seedIds).stream()
+                .collect(Collectors.toMap(TbSeed::getIdxSeed, s -> s));
+
+        return invs.stream().map(i -> {
+            TbSeed s = seedById.get(i.getIdxSeed());
+            return CropInvResponse.builder()
+                    .seedId(i.getIdxSeed())
+                    .name(s != null ? s.getName() : "작물")
+                    .code(s != null ? s.getCode() : null)
+                    .count(i.getQty())
                     .build();
         }).toList();
     }

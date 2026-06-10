@@ -40,21 +40,19 @@
   <script>
     let currentTab = 'seeds';
 
-    // 🚧 더미. API 나오면 교체:
+    // ✅ 서버 권위. 두 탭 모두 API에서 받아온다.
     //   씨앗: GET /api/farm/inventory/seeds
     //   작물: GET /api/farm/inventory/crops
-    const seedInventory = [
-      { seedId: 1, name: '토마토 씨앗', emoji: '🍅', count: 3 },
-      { seedId: 2, name: '당근 씨앗', emoji: '🥕', count: 5 },
-      { seedId: 3, name: '옥수수 씨앗', emoji: '🌽', count: 1 },
-    ];
-    const cropInventory = [
-      { cropId: 1, name: '토마토', emoji: '🍅', count: 8 },
-      { cropId: 2, name: '딸기', emoji: '🍓', count: 2 },
-    ];
+    let seedInventory = [];
+    let cropInventory = [];
+    let loaded = { seeds: false, crops: false };
+
+    // code → 이모지 (다른 화면과 동일 매핑)
+    const EMOJI = { radish: '🥗', tomato: '🍅', corn: '🌽', pumpkin: '🎃', carrot: '🥕', strawberry: '🍓' };
+    function emojiOf(code) { return EMOJI[code] || '🌱'; }
 
     document.addEventListener('DOMContentLoaded', function () {
-      render();
+      loadTab('seeds');   // 첫 탭 로드
     });
 
     function selectTab(btn) {
@@ -63,7 +61,46 @@
       });
       btn.classList.remove('btn-light'); btn.classList.add('btn-primary');
       currentTab = btn.dataset.tab;
-      render();
+      loadTab(currentTab);
+    }
+
+    // 탭 데이터 로드 (한 번 받아오면 캐시)
+    async function loadTab(tab) {
+      if (loaded[tab]) { render(); return; }
+
+      const url = tab === 'seeds'
+        ? '/api/farm/inventory/seeds'
+        : '/api/farm/inventory/crops';
+
+      try {
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('불러오지 못했어요');
+        const body = await res.json();
+        const data = (body.data ?? body) || [];
+
+        if (tab === 'seeds') {
+          // 씨앗 응답: { seedId, name, waters, qty }
+          seedInventory = data.map(s => ({
+            seedId: s.seedId,
+            name: s.name,
+            code: s.code,            // 씨앗 응답에 code가 없으면 undefined → 기본 이모지
+            count: s.qty
+          }));
+        } else {
+          // 작물 응답: { seedId, name, code, count }
+          cropInventory = data.map(c => ({
+            seedId: c.seedId,
+            name: c.name,
+            code: c.code,
+            count: c.count
+          }));
+        }
+        loaded[tab] = true;
+        render();
+      } catch (e) {
+        console.error(e);
+        render();   // 빈 상태로라도 그림
+      }
     }
 
     function render() {
@@ -73,7 +110,7 @@
 
       const list = currentTab === 'seeds' ? seedInventory : cropInventory;
 
-      if (list.length === 0) {
+      if (!list || list.length === 0) {
         empty.classList.remove('d-none');
         document.getElementById('emptyIcon').textContent = currentTab === 'seeds' ? '🌱' : '🌾';
         document.getElementById('emptyMsg').textContent =
@@ -86,16 +123,15 @@
         const col = document.createElement('div');
         col.className = 'col-4';
 
-        // 씨앗이면 "심으러 가기"(농장으로), 작물이면 "팔러 가기"(주문으로) 힌트
         const actionHint = currentTab === 'seeds'
           ? '<div class="fs-9 text-primary mt-1">밭에 심기</div>'
           : '<div class="fs-9 text-warning mt-1">주문 이행</div>';
-        const goTo = currentTab === 'seeds' ? '/farm' : '/farm/orders';
+        const goTo = currentTab === 'seeds' ? '/farm' : '/orders';
 
         col.innerHTML = `
             <div class="card shadow-sm" style="cursor:pointer;" onclick="location.href='${goTo}'">
                 <div class="card-body text-center py-4 px-1 position-relative">
-                    <div style="font-size:36px;">${item.emoji}</div>
+                    <div style="font-size:36px;">${emojiOf(item.code)}</div>
                     <div class="fw-bold fs-7 text-gray-800 mt-1">${item.name}</div>
                     ${actionHint}
                     <span class="badge badge-circle badge-primary position-absolute"

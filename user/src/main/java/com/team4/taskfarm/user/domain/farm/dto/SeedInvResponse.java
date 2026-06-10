@@ -14,4 +14,5 @@ public class SeedInvResponse {
     private String name;   // 씨앗(작물) 이름
     private int waters;    // 물주기 필요 횟수
     private int qty;       // 보유 수량
+    private String code;
 }
