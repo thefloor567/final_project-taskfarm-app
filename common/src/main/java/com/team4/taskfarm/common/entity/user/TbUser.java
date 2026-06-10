@@ -118,4 +118,17 @@ public class TbUser extends BaseEntity {
         }
         return levelsGained;
     }
+    
+    
+    public int expInCurrentLevel() {
+    	return this.exp - cumExp(this.level);
+    }
+    
+    public int expNeededForLevel() {
+    	if (this.level >= MAX_LEVEL) return 0;
+    	return cumExp(this.level +1) - cumExp(this.level);
+    }
+    
+    
+    
 }

@@ -5,14 +5,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team4.taskfarm.common.config.JwtService;
+import com.team4.taskfarm.common.config.TokenBlacklist;
 import com.team4.taskfarm.common.exception.CustomException;
-import com.team4.taskfarm.user.domain.auth.dto.ChangePasswordRequest;
 import com.team4.taskfarm.user.domain.auth.dto.LoginRequest;
 import com.team4.taskfarm.user.domain.auth.dto.LoginResponse;
 import com.team4.taskfarm.user.domain.auth.dto.SignupRequest;
-import com.team4.taskfarm.user.domain.auth.dto.UpdateProfileRequest;
-import com.team4.taskfarm.user.domain.auth.dto.UserResponse;
-import com.team4.taskfarm.user.domain.auth.repository.UserRepository;
+import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
 import com.team4.taskfarm.common.entity.user.TbUser;
 
 import lombok.RequiredArgsConstructor;
@@ -21,9 +19,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UserRepository userRepository;
+    private final AuthUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final TokenBlacklist tokenBlacklist;
 
     @Transactional
     public void signup(SignupRequest req) {
@@ -63,46 +62,11 @@ public class AuthService {
             .token(token)
             .build();
     }
-
-    @Transactional(readOnly = true)
-    public UserResponse getProfile(Long userIdx) {
-        TbUser user = userRepository.findById(userIdx)
-            .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
-
-        return UserResponse.from(user);
+    
+    public void logout(String token) {
+        if (token == null) return;
+        tokenBlacklist.blacklist(token, jwtService.getExpiresAt(token));
     }
 
-    @Transactional
-    public void updateProfile(Long userIdx, UpdateProfileRequest req) {
-        TbUser user = userRepository.findById(userIdx)
-            .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
-
-        if (req.getNickname() != null) {
-            user.updateNickname(req.getNickname());
-        }
-    }
-
-    @Transactional
-    public void changePassword(Long userIdx, ChangePasswordRequest req) {
-        TbUser user = userRepository.findById(userIdx)
-            .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
-
-        if (user.getDeleteDate() != null || user.getStatus() == TbUser.Status.SUSPENDED) {
-            throw CustomException.unauthorized("탈퇴한 계정입니다.");
-        }
-
-        if (!passwordEncoder.matches(req.getCurrentPassword(), user.getPass())) {
-            throw CustomException.badRequest("현재 비밀번호가 일치하지 않습니다.");
-        }
-
-        user.updatePass(passwordEncoder.encode(req.getNewPassword()));
-    }
-
-    @Transactional
-    public void withdraw(Long userIdx) {
-        TbUser user = userRepository.findById(userIdx)
-            .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
-
-        user.withdraw();
-    }
+    
 }

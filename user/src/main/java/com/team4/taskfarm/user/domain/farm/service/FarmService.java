@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,7 +21,6 @@ public class FarmService {
     private final TbCropRepository cropRepository;
     private final TbSeedRepository seedRepository;
     private final TbCropInvRepository cropInvRepository;
-    private final TbFarmEventRepository farmEventRepository;
 
     /** 신규 유저 농장 기본 밭 개수 */
     private static final int DEFAULT_PLOT_COUNT = 6;

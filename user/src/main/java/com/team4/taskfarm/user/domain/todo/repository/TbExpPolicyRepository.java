@@ -3,8 +3,6 @@ package com.team4.taskfarm.user.domain.todo.repository;
 import com.team4.taskfarm.common.entity.exp.TbExpPolicy;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
-
 /**
  * 경험치 정책(우선순위별 지급량) 조회.
  * A/B/C 3행 고정이라 전체 조회 후 Map 캐싱해서 쓴다 (조회 1회).

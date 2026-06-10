@@ -5,7 +5,7 @@ import com.team4.taskfarm.common.entity.farm.TbFarmEvent;
 import com.team4.taskfarm.common.entity.user.TbUser;
 import com.team4.taskfarm.user.domain.farm.repository.TbEventConfigRepository;
 import com.team4.taskfarm.user.domain.farm.repository.TbFarmEventRepository;
-import com.team4.taskfarm.user.domain.auth.repository.UserRepository;
+import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -34,7 +34,7 @@ public class FarmEventService {
 
     private final TbFarmEventRepository farmEventRepository;
     private final TbEventConfigRepository eventConfigRepository;
-    private final UserRepository userRepository;
+    private final AuthUserRepository userRepository;
 
     /** 평범한 날(이벤트 설정이 하나도 없을 때의 안전 기본값) */
     private static final String DEFAULT_EVENT_KEY = "normal";

@@ -1,4 +1,4 @@
-package com.team4.taskfarm.user.domain.auth.dto;
+package com.team4.taskfarm.user.domain.user.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

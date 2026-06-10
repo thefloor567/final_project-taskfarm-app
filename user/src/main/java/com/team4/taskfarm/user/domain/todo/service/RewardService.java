@@ -6,7 +6,7 @@ import com.team4.taskfarm.common.entity.farm.TbFarm;
 import com.team4.taskfarm.common.entity.todo.TbTodo;
 import com.team4.taskfarm.common.entity.user.TbUser;
 import com.team4.taskfarm.common.exception.CustomException;
-import com.team4.taskfarm.user.domain.auth.repository.UserRepository;
+import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
 import com.team4.taskfarm.user.domain.farm.repository.TbFarmRepository;
 import com.team4.taskfarm.user.domain.todo.repository.TbExpLedgerRepository;
 import com.team4.taskfarm.user.domain.todo.repository.TbExpPolicyRepository;
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RewardService {
 
-    private final UserRepository userRepository;
+    private final AuthUserRepository userRepository;
     private final TbFarmRepository farmRepository;
     private final TbExpPolicyRepository expPolicyRepository;
     private final TbExpLedgerRepository expLedgerRepository;

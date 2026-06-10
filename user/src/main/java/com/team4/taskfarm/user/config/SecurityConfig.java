@@ -19,16 +19,18 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.team4.taskfarm.common.config.JwtFilter;
 import com.team4.taskfarm.common.config.JwtService;
+import com.team4.taskfarm.common.config.TokenBlacklist;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtService jwtService;
-
-    public SecurityConfig(JwtService jwtService) {
-        this.jwtService = jwtService;
-    }
+    
+    private final TokenBlacklist tokenBlacklist;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -78,7 +80,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .addFilterBefore(
-                new JwtFilter(jwtService),
+                new JwtFilter(jwtService, tokenBlacklist),
                 UsernamePasswordAuthenticationFilter.class
             );
 

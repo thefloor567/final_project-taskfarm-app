@@ -2,6 +2,8 @@ package com.team4.taskfarm.admin.config;
 
 import com.team4.taskfarm.common.config.JwtFilter;
 import com.team4.taskfarm.common.config.JwtService;
+import com.team4.taskfarm.common.config.TokenBlacklist;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,6 +44,8 @@ public class SecurityConfig {
     private static final String ROLE_ADMIN = "ROLE_ADMIN";
 
     private final JwtService jwtService;
+    
+    private final TokenBlacklist tokenBlacklist;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -55,7 +59,7 @@ public class SecurityConfig {
                 // 나머지는 ROLE_ADMIN 만 (JwtFilter가 넣는 권한 문자열과 정확히 일치)
                 .anyRequest().hasAuthority(ROLE_ADMIN)
             )
-            .addFilterBefore(new JwtFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(new JwtFilter(jwtService, tokenBlacklist), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

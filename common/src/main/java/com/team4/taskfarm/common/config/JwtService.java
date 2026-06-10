@@ -64,4 +64,15 @@ public class JwtService {
             return false;
         }
     }
+    
+    
+    public java.util.Date getExpiresAt(String token){
+    	return JWT.require(Algorithm.HMAC256(secret))
+    			.build()
+    			.verify(token)
+    			.getExpiresAt();
+    }
+    
+    
+    
 }
