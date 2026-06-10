@@ -39,6 +39,8 @@ public class TodoService {
 	// AI 추천 작업 Redis 큐 접수/조회용
 	private final AiRecommendQueueService aiRecommendQueueService;
 	
+	private final RewardService rewardService;
+	
 	// 할일 가져오기
 	@Transactional(readOnly = true)
 	public List<TodoResponse> getTodoList(Long idxUser, Boolean isDone, Long idxCat, LocalDate dueDate){
@@ -112,9 +114,15 @@ public class TodoService {
 	// findTodo에서 찾아오고 완료 처리
 	@Transactional
 	public TodoResponse completeTodo(Long idxUser, Long idxTodo) {
-		// 완료 시 xp 적립 + 물방울 소량 지급 이거 구현 아직 안함
 		TbTodo todo = findTodo(idxUser, idxTodo);
+
+		boolean wasDone = todo.isDone();      // 완료 전 상태 기록
 		todo.complete();
+
+		// 최초 완료에만 보상 지급 (이미 완료였던 걸 다시 완료해도 재지급 X — 파밍 방지)
+		if (!wasDone) {
+			rewardService.grantTodoDone(idxUser, todo.getPriority(), todo.getIdxTodo());
+		}
 		String categoryName = getCategoryName(idxUser, todo.getIdxCat());
 		int rewardExp = getLatestRewardExp(idxUser, todo.getIdxTodo());
 		return TodoResponse.from(todo, categoryName, rewardExp);
