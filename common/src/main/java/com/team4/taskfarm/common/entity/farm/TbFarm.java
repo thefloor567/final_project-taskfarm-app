@@ -89,4 +89,9 @@ public class TbFarm extends BaseEntity {
         if (count > 0) scarecrowLeft += count;
     }
     
+    /** 물방울 적립 (할일 완료 / 레벨업 보너스). */
+    public void addDrops(int amount) {
+        if (amount > 0) this.drops += amount;
+    }
+    
 }

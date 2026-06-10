@@ -2,6 +2,7 @@ package com.team4.taskfarm.user.domain.farm.service;
 
 import com.team4.taskfarm.common.entity.farm.*;
 import com.team4.taskfarm.common.entity.user.TbUser;
+import com.team4.taskfarm.user.domain.auth.repository.UserRepository;
 import com.team4.taskfarm.common.exception.CustomException;
 import com.team4.taskfarm.user.domain.farm.dto.ToolShopItemResponse;
 import com.team4.taskfarm.user.domain.farm.repository.*;
@@ -24,7 +25,7 @@ import java.util.Set;
 public class ToolShopService {
 
     private final TbFarmRepository farmRepository;
-    private final TbUserRepository userRepository;
+    private final UserRepository userRepository;
     private final TbToolRepository toolRepository;
     private final TbCropRepository cropRepository;
     private final TbPlotRepository plotRepository;

@@ -46,4 +46,15 @@ public class TbExpLedger {
     private LocalDateTime createDate;
 
     public enum LedgerType { EARN, SPEND }
+    
+    /** 경험치 적립 내역 (할일 완료) */
+    public static TbExpLedger earn(Long idxUser, int amount, String reason, Long refIdx) {
+        TbExpLedger l = new TbExpLedger();
+        l.idxUser = idxUser;
+        l.type = LedgerType.EARN;
+        l.amount = amount;
+        l.reason = reason;
+        l.refIdx = refIdx;       // 할일 Idx
+        return l;
+    }
 }

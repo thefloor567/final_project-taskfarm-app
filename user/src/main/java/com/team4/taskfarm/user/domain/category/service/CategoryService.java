@@ -10,7 +10,7 @@ import com.team4.taskfarm.common.exception.CustomException;
 import com.team4.taskfarm.user.domain.category.dto.CategoryCreateRequest;
 import com.team4.taskfarm.user.domain.category.dto.CategoryResponse;
 import com.team4.taskfarm.user.domain.category.dto.CategoryUpdateRequest;
-import com.team4.taskfarm.user.domain.category.entity.Category;
+import com.team4.taskfarm.common.entity.category.TbCategory;
 import com.team4.taskfarm.user.domain.category.repository.CategoryRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -31,13 +31,13 @@ public class CategoryService {
 
     @Transactional
     public CategoryResponse createCategory(Long userIdx, CategoryCreateRequest req) {
-        Category category = Category.create(userIdx, req.getName(), req.getColor());
+        TbCategory category = TbCategory.create(userIdx, req.getName(), req.getColor());
         return CategoryResponse.from(categoryRepository.save(category));
     }
 
     @Transactional
     public void updateCategory(Long userIdx, Long catIdx, CategoryUpdateRequest req) {
-        Category category = categoryRepository.findById(catIdx)
+        TbCategory category = categoryRepository.findById(catIdx)
             .orElseThrow(() -> CustomException.notFound("카테고리를 찾을 수 없습니다."));
 
         if (!category.getIdxUser().equals(userIdx)) {
@@ -49,7 +49,7 @@ public class CategoryService {
 
     @Transactional
     public void deleteCategory(Long userIdx, Long catIdx) {
-        Category category = categoryRepository.findById(catIdx)
+        TbCategory category = categoryRepository.findById(catIdx)
             .orElseThrow(() -> CustomException.notFound("카테고리를 찾을 수 없습니다."));
 
         if (!category.getIdxUser().equals(userIdx)) {
