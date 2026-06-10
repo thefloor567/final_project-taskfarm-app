@@ -1,11 +1,13 @@
 package com.team4.taskfarm.user.domain.todo.service;
 
+import com.team4.taskfarm.common.entity.ai.TbAiLog;
 import com.team4.taskfarm.common.entity.exp.TbExpLedger;
 import com.team4.taskfarm.common.entity.exp.TbExpPolicy;
 import com.team4.taskfarm.common.entity.farm.TbFarm;
 import com.team4.taskfarm.common.entity.todo.TbTodo;
 import com.team4.taskfarm.common.entity.user.TbUser;
 import com.team4.taskfarm.common.exception.CustomException;
+import com.team4.taskfarm.user.domain.ai.repository.AiLogRepository;
 import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
 import com.team4.taskfarm.user.domain.farm.repository.TbFarmRepository;
 import com.team4.taskfarm.user.domain.todo.repository.TbExpLedgerRepository;
@@ -18,17 +20,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * 할일 완료에 따른 경험치·물방울 보상 (서버 권위).
- *
- * 정책:
- *  - XP 는 누적(tbUser.earnExp). auth 설계상 "절대 안 깎임" -> 완료 해제 시 회수 없음.
- *  - 완료: XP 적립 + 레벨업 판정(TbUser.earnExp 가 함께 처리) + 물방울 + 레벨업 보너스 물방울 + 원장 EARN.
- *
- * 경험치 지급량은 우선순위(A/B/C)별 tbExpPolicy 로 결정. (할일에 박지 않음)
- * 레벨 계산/레벨업 판정은 TbUser.earnExp() 가 단독 책임 - 여기서 레벨을 따로 계산하지 않는다.
- * 호출: TodoService.completeTodo 에서.
- */
 @Service
 @RequiredArgsConstructor
 public class RewardService {
@@ -37,22 +28,33 @@ public class RewardService {
     private final TbFarmRepository farmRepository;
     private final TbExpPolicyRepository expPolicyRepository;
     private final TbExpLedgerRepository expLedgerRepository;
+    private final AiLogRepository aiLogRepository;          // ← 추가 (AI값 조회)
+
+    // 레벨디자인 ③ 클램프 범위 (TbExpPolicy에 없으므로 코드 상수)
+    private static final Map<TbTodo.Priority, int[]> CLAMP = Map.of(
+            TbTodo.Priority.A, new int[]{10, 60},
+            TbTodo.Priority.B, new int[]{5, 30},
+            TbTodo.Priority.C, new int[]{1, 15}
+    );
 
     /** 할일 완료 보상 지급 */
     @Transactional
     public void grantTodoDone(Long idxUser, TbTodo.Priority priority, Long idxTodo) {
         TbExpPolicy policy = policyOf(priority);
 
+        // AI 추천값 있으면 우선, 없으면 정책 BaseExp → clamp (레벨디자인 공식)
+        int aiExp = getLatestAiRewardExp(idxUser, idxTodo);
+        int raw = (aiExp > 0) ? aiExp : policy.getBaseExp();
+        int granted = clamp(priority, raw);
+
+        // 1) XP 적립 + 레벨업 판정
         TbUser user = userRepository.findById(idxUser)
                 .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
+        int levelsGained = user.earnExp(granted);
 
-        // 1) XP 적립 + 레벨업 판정 (TbUser.earnExp 가 누적·레벨갱신까지 처리, 오른 레벨 수 반환)
-        int gainedExp = policy.getBaseExp();
-        int levelsGained = user.earnExp(gainedExp);
-
-        // 2) 원장 EARN 기록 (잔고는 tbUser.Exp, 이력은 여기)
+        // 2) 원장 EARN 기록
         expLedgerRepository.save(
-                TbExpLedger.earn(idxUser, gainedExp, "TODO_DONE", idxTodo));
+                TbExpLedger.earn(idxUser, granted, "TODO_DONE", idxTodo));
 
         // 3) 물방울 지급 (농장 자원이라 tbFarm)
         TbFarm farm = farmRepository.findByIdxUser(idxUser).orElse(null);
@@ -66,7 +68,21 @@ public class RewardService {
         }
     }
 
-    // 우선순위 -> 정책 (A/B/C 3행이라 findAll 후 매칭)
+    /** 이 todo의 최신 AI 추천값 (없으면 0) */
+    private int getLatestAiRewardExp(Long idxUser, Long idxTodo) {
+        return aiLogRepository
+                .findTopByIdxUserAndIdxTodoOrderByCreateDateDesc(idxUser, idxTodo)
+                .map(TbAiLog::getRewardExp)
+                .orElse(0);
+    }
+
+    /** 우선순위별 MIN~MAX로 제한 */
+    private int clamp(TbTodo.Priority priority, int raw) {
+        int[] range = CLAMP.get(priority);
+        return Math.max(range[0], Math.min(raw, range[1]));
+    }
+
+    // 우선순위 -> 정책
     private TbExpPolicy policyOf(TbTodo.Priority priority) {
         Map<String, TbExpPolicy> byPriority = expPolicyRepository.findAll().stream()
                 .collect(Collectors.toMap(p -> p.getPriority().name(), Function.identity(), (a, b) -> a));
