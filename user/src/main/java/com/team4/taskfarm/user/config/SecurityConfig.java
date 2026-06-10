@@ -61,6 +61,9 @@ public class SecurityConfig {
                     "/assets/**",
                     "/favicon.ico"
                 ).permitAll()
+                
+                // 헬스체크 (EKS liveness/readiness) + 에러 포워딩
+                .requestMatchers("/actuator/health/**", "/error").permitAll()
 
                 // 인증 API 중 로그인/회원가입만 허용
                 .requestMatchers(
@@ -72,7 +75,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/**").authenticated()
 
                 // 나머지는 일단 허용
-                .anyRequest().permitAll()
+                .anyRequest().authenticated()
             )
             .addFilterBefore(
                 new JwtFilter(jwtService),

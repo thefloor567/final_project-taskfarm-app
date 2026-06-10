@@ -11,13 +11,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.team4.taskfarm.common.entity.todo.TbTodo;
 import com.team4.taskfarm.common.exception.CustomException;
-import com.team4.taskfarm.user.domain.category.entity.Category;
+import com.team4.taskfarm.common.entity.category.TbCategory;
 import com.team4.taskfarm.user.domain.category.repository.CategoryRepository;
 import com.team4.taskfarm.user.domain.todo.dto.TodoRequest;
 import com.team4.taskfarm.user.domain.todo.dto.TodoResponse;
 import com.team4.taskfarm.user.domain.todo.repository.TodoRepository;
 
 import lombok.RequiredArgsConstructor;
+
+
 
 @Service
 @RequiredArgsConstructor
@@ -28,75 +30,29 @@ public class TodoService {
 	// 카테고리 이름 조회용
 	private final CategoryRepository categoryRepository;
 	
+	private final RewardService rewardService;
+	
 	// 할일 가져오기
 	@Transactional(readOnly = true)
 	public List<TodoResponse> getTodoList(Long idxUser, Boolean isDone, Long idxCat, LocalDate dueDate){
 		
-		List<TbTodo> todo;
+		LocalDateTime start = (dueDate != null) ? dueDate.atStartOfDay() : null;
+		LocalDateTime end = (dueDate != null) ? dueDate.plusDays(1).atStartOfDay() : null;
 		
-		if(dueDate != null) {
-			LocalDateTime start = dueDate.atStartOfDay();
-			LocalDateTime end = dueDate.plusDays(1).atStartOfDay();
-			
-			// 1. 완료 여부 + 카테고리 + 날짜
-			if (isDone != null && idxCat != null) {
-				todo = todoRepository.findByIdxUserAndIsDoneAndIdxCatAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
-							idxUser, isDone, idxCat, start, end
-						);
-				
-			// 2. 완려 여부 + 날짜
-			} else if (isDone != null) {
-				todo = todoRepository.findByIdxUserAndIsDoneAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
-							idxUser, isDone, start, end
-						);
-				
-			// 3. 카테고리 + 날짜
-			} else if (idxCat != null) {
-				todo = todoRepository.findByIdxUserAndIdxCatAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
-							idxUser, idxCat, start, end
-						);
-			
-			// 4. 날짜
-			} else {
-				todo = todoRepository.findByIdxUserAndDueDateBetweenAndDeleteDateIsNullOrderByCreateDateDesc(
-							idxUser, start, end
-						);
-			}
-		} else {
-			// 5. 완려 여부 + 카테고리
-			if (isDone != null && idxCat != null) {
-				todo = todoRepository.findByIdxUserAndIsDoneAndIdxCatAndDeleteDateIsNullOrderByCreateDateDesc(
-							idxUser, isDone, idxCat
-						);
-			// 6. 완려 여부
-			} else if (isDone != null) {
-				todo = todoRepository.findByIdxUserAndIsDoneAndDeleteDateIsNullOrderByCreateDateDesc(
-							idxUser, isDone
-						);
-			// 7. 카테고리
-			} else  if (idxCat != null) {
-				todo = todoRepository.findByIdxUserAndIdxCatAndDeleteDateIsNullOrderByCreateDateDesc(
-							idxUser, idxCat
-						);
-			// 8. 모두 X
-			} else {
-				todo = todoRepository.findByIdxUserAndDeleteDateIsNullOrderByCreateDateDesc(idxUser);
-			}
-		}
+		List<TbTodo> todo = todoRepository.search(idxUser, isDone, idxCat, start, end);
 		
 		// 현재 유저의 카테고리 목록을 한 번만 조회해서
         // idxCat -> categoryName 형태의 Map으로 변환한다.
         // Todo마다 categoryRepository를 호출하면 N+1처럼 조회가 많아질 수 있어서 이 방식이 더 낫다.
         Map<Long, String> categoryNameMap = categoryRepository.findByIdxUserAndDeleteDateIsNull(idxUser)
                 .stream()
-                .collect(Collectors.toMap(
-                        Category::getIdxCat,
-                        Category::getName
-                ));
+                .collect(Collectors.toMap(TbCategory::getIdxCat, TbCategory::getName));
 
         // TodoResponse에 categoryName까지 포함해서 반환한다.
         return todo.stream()
-                .map(t -> TodoResponse.from(t, getCategoryNameFromMap(t.getIdxCat(), categoryNameMap)))
+                .map(t -> TodoResponse.from(
+                		t,
+                		getCategoryNameFromMap(t.getIdxCat(), categoryNameMap)))
                 .toList();
     }
 	
@@ -143,22 +99,27 @@ public class TodoService {
 	
 	// findTodo에서 찾아오고 완료 처리
 	@Transactional
-	public TodoResponse completeTodo(Long idxUser, Long idxTodo) {
-		// 완료 시 xp 적립 + 물방울 소량 지급 이거 구현 아직 안함
-		TbTodo todo = findTodo(idxUser, idxTodo);
-		todo.complete();
-		String categoryName = getCategoryName(idxUser, todo.getIdxCat());
-		return TodoResponse.from(todo, categoryName);
-	}
+    public TodoResponse completeTodo(Long idxUser, Long idxTodo) {
+        TbTodo todo = findTodo(idxUser, idxTodo);
+
+        boolean wasDone = todo.isDone();
+        todo.complete();
+        if (!wasDone) {   // 원래 완료 아니었을 때만 지급 (중복 적립 방지)
+            rewardService.grantTodoDone(idxUser, todo.getPriority(), todo.getIdxTodo());
+        }
+
+        String categoryName = getCategoryName(idxUser, todo.getIdxCat());
+        return TodoResponse.from(todo, categoryName);
+    }
 	
 	// 할일 완료 해제
 	@Transactional
-	public TodoResponse incompleteTodo(Long idxUser, Long idxTodo) {
-	    TbTodo todo = findTodo(idxUser, idxTodo);
-	    todo.incomplete();
-	    String categoryName = getCategoryName(idxUser, todo.getIdxCat());
-	    return TodoResponse.from(todo, categoryName);
-	}
+    public TodoResponse incompleteTodo(Long idxUser, Long idxTodo) {
+        TbTodo todo = findTodo(idxUser, idxTodo);
+        todo.incomplete();   // completeDate = null 처리 (이미 구현됨)
+        String categoryName = getCategoryName(idxUser, todo.getIdxCat());
+        return TodoResponse.from(todo, categoryName);
+    }
 	
 	// repo에서 idxUser와 idxTodo로 해당 사용자의 할일 찾아오기
 	private TbTodo findTodo(Long idxUser, Long idxTodo) {
@@ -184,7 +145,7 @@ public class TodoService {
 		
 		return categoryRepository
 				.findByIdxCatAndIdxUserAndDeleteDateIsNull(idxCat, idxUser)
-				.map(Category::getName)
+				.map(TbCategory::getName)
 				.orElse("미분류");
 	}
 }

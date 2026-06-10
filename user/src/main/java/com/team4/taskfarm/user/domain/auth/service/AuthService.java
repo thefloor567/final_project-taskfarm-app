@@ -13,7 +13,7 @@ import com.team4.taskfarm.user.domain.auth.dto.SignupRequest;
 import com.team4.taskfarm.user.domain.auth.dto.UpdateProfileRequest;
 import com.team4.taskfarm.user.domain.auth.dto.UserResponse;
 import com.team4.taskfarm.user.domain.auth.repository.UserRepository;
-import com.team4.taskfarm.user.domain.user.entity.User;
+import com.team4.taskfarm.common.entity.user.TbUser;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,7 +31,7 @@ public class AuthService {
             throw CustomException.badRequest("이미 사용중인 이메일입니다.");
         }
 
-        User user = User.create(
+        TbUser user = TbUser.create(
             req.getEmail(),
             passwordEncoder.encode(req.getPassword()),
             req.getNickname()
@@ -42,10 +42,10 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest req) {
-        User user = userRepository.findByEmail(req.getEmail())
+        TbUser user = userRepository.findByEmail(req.getEmail())
             .orElseThrow(() -> CustomException.unauthorized("존재하지 않는 이메일입니다."));
 
-        if (user.getDeleteDate() != null || user.getStatus() == User.Status.SUSPENDED) {
+        if (user.getDeleteDate() != null || user.getStatus() == TbUser.Status.SUSPENDED) {
             throw CustomException.unauthorized("탈퇴한 계정입니다.");
         }
 
@@ -66,7 +66,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public UserResponse getProfile(Long userIdx) {
-        User user = userRepository.findById(userIdx)
+        TbUser user = userRepository.findById(userIdx)
             .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
 
         return UserResponse.from(user);
@@ -74,7 +74,7 @@ public class AuthService {
 
     @Transactional
     public void updateProfile(Long userIdx, UpdateProfileRequest req) {
-        User user = userRepository.findById(userIdx)
+        TbUser user = userRepository.findById(userIdx)
             .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
 
         if (req.getNickname() != null) {
@@ -84,10 +84,10 @@ public class AuthService {
 
     @Transactional
     public void changePassword(Long userIdx, ChangePasswordRequest req) {
-        User user = userRepository.findById(userIdx)
+        TbUser user = userRepository.findById(userIdx)
             .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
 
-        if (user.getDeleteDate() != null || user.getStatus() == User.Status.SUSPENDED) {
+        if (user.getDeleteDate() != null || user.getStatus() == TbUser.Status.SUSPENDED) {
             throw CustomException.unauthorized("탈퇴한 계정입니다.");
         }
 
@@ -100,7 +100,7 @@ public class AuthService {
 
     @Transactional
     public void withdraw(Long userIdx) {
-        User user = userRepository.findById(userIdx)
+        TbUser user = userRepository.findById(userIdx)
             .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
 
         user.withdraw();

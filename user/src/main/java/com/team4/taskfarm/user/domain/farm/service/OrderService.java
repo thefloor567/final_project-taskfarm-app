@@ -2,6 +2,7 @@ package com.team4.taskfarm.user.domain.farm.service;
 
 import com.team4.taskfarm.common.entity.farm.*;
 import com.team4.taskfarm.common.entity.user.TbUser;
+import com.team4.taskfarm.user.domain.auth.repository.UserRepository;
 import com.team4.taskfarm.common.exception.CustomException;
 import com.team4.taskfarm.user.domain.farm.dto.OrderResponse;
 import com.team4.taskfarm.user.domain.farm.dto.OrderResponse.OrderItemDto;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final TbFarmRepository farmRepository;
-    private final TbUserRepository userRepository;
+    private final UserRepository userRepository;
     private final TbSeedRepository seedRepository;
     private final TbCropInvRepository cropInvRepository;
     private final TbCoinLedgerRepository coinLedgerRepository;

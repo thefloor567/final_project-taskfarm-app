@@ -1,6 +1,7 @@
 package com.team4.taskfarm.common.entity.category;
 
 import com.team4.taskfarm.common.entity.BaseEntity;
+
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -37,4 +38,26 @@ public class TbCategory extends BaseEntity {
     private LocalDateTime deleteDate;
 
     // ✏️ TODO: 빌더, updateName/updateColor
+    
+    public static TbCategory create(Long idxUser, String name, String color) {
+        TbCategory category = new TbCategory();
+        category.idxUser = idxUser;
+        category.name = name;
+        category.color = color;
+        return category;
+    }
+
+    public void update(String name, String color) {
+        if (name != null) {
+            this.name = name;
+        }
+
+        if (color != null) {
+            this.color = color;
+        }
+    }
+
+    public void delete() {
+        this.deleteDate = LocalDateTime.now();
+    }
 }

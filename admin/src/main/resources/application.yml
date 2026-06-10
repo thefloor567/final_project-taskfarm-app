@@ -11,7 +11,7 @@ spring:
   # ── DB (user앱과 같은 RDS 공유) ──
   datasource:
     master:
-      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:taskfarm}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      jdbc-url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:taskfarm}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
       username: ${DB_USERNAME:taskfarm}
       password: ${DB_PASSWORD:taskfarm1234}
       driver-class-name: com.mysql.cj.jdbc.Driver
