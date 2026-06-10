@@ -5,7 +5,7 @@ spring:
   application:
     name: taskfarm-user
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE:local,worker}
     
   data:
     redis:
@@ -62,7 +62,7 @@ management:
         
 gemini:
   api-key: ${GEMINI_API_KEY:}
-  model: gemini-2.5-flash
+  model: gemini-3.5-flash
           
 #farm:
 #  wither-minutes: 1440      # 운영 기본 24시간(=1440분)
