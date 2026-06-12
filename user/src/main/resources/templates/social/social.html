@@ -11,7 +11,7 @@
     <div id="scrollContainer">
       <div class="p-4 d-flex flex-column gap-3">
 
-        <!-- 상단 탭: 랭킹 / 친구  + 업적 바로가기 -->
+        <!-- 상단 탭: 랭킹 / 친구  + 업적 바로가기. -->
         <div class="d-flex align-items-center gap-2">
           <ul class="nav nav-pills nav-fill gap-2 flex-grow-1">
             <li class="nav-item">
@@ -33,18 +33,16 @@
 
         <!-- ============ 랭킹 패널 ============ -->
         <div id="panel-rank">
-          <!-- 누적/주간 -->
           <ul class="nav nav-tabs nav-line-tabs fs-7 mb-3">
             <li class="nav-item"><a class="nav-link active" id="rk-total"  onclick="switchRankType('total')">누적</a></li>
             <li class="nav-item"><a class="nav-link"        id="rk-weekly" onclick="switchRankType('weekly')">주간</a></li>
           </ul>
-          <!-- 전체/친구 범위 -->
+
           <div class="btn-group w-100 mb-3" role="group">
             <button class="btn btn-sm btn-light-primary active" id="sc-all"    onclick="switchScope('all')">전체</button>
             <button class="btn btn-sm btn-light"               id="sc-friend" onclick="switchScope('friend')">친구</button>
           </div>
 
-          <!-- 내 순위 카드 (상단 고정) -->
           <div id="myRankCard" class="card shadow-sm border border-primary mb-3 d-none">
             <div class="card-body py-3 d-flex align-items-center gap-3">
               <div class="fw-bolder fs-2 text-primary" id="myRankNo">-</div>
@@ -56,13 +54,11 @@
             </div>
           </div>
 
-          <!-- TOP 100 리스트 -->
           <div id="rankList" class="d-flex flex-column gap-2"></div>
         </div>
 
         <!-- ============ 친구 패널 ============ -->
         <div id="panel-friend" class="d-none">
-          <!-- 내 친구코드 + 추가 -->
           <div class="card shadow-sm mb-3">
             <div class="card-body py-3">
               <div class="d-flex justify-content-between align-items-center mb-2">
@@ -77,17 +73,14 @@
             </div>
           </div>
 
-          <!-- 받은 신청 -->
           <div id="friendPendingWrap" class="mb-3 d-none">
             <h4 class="fw-bold fs-6 text-gray-800 mb-2">받은 신청</h4>
             <div id="friendPendingList" class="d-flex flex-column gap-2"></div>
           </div>
 
-          <!-- 내 친구 목록 -->
           <h4 class="fw-bold fs-6 text-gray-800 mb-2">내 친구 <span id="friendCount" class="text-gray-400 fs-8">0</span></h4>
           <div id="friendList" class="d-flex flex-column gap-2"></div>
 
-          <!-- 보낸 신청 -->
           <div id="friendSentWrap" class="mt-3 d-none">
             <h4 class="fw-bold fs-6 text-gray-500 mb-2">보낸 신청 (대기중)</h4>
             <div id="friendSentList" class="d-flex flex-column gap-2"></div>
@@ -104,34 +97,14 @@
   <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
   <script th:src="@{/js/scripts.bundle.js}"></script>
   <script>
-    // ✅ 서버 권위. 순위·점수·친구상태 전부 서버 처리. (프론트 더미·직접계산 금지)
-    //
-    // 🚧 API 계약 (백엔드 챗에 전달):
-    //  랭킹 (명세 1번 — Redis Sorted Set):
-    //   GET /api/rank?type=total|weekly&scope=all|friend
-    //     → { data: { top:[{rank, userId, nickname, title, exp}, ...100],
-    //                  me:{rank, nickname, exp} } }
-    //     ※ me.rank가 100 밖이어도 "내 순위 카드"로 항상 표시
-    //  친구 (명세 2번):
-    //   GET  /api/friends
-    //     → { data: { myCode:'AB12CD34', pendingCount:2,
-    //                 friends:[{id, nickname, level, rank, title}],
-    //                 received:[{id, nickname, code}],
-    //                 sent:[{id, nickname}] } }
-    //   POST   /api/friends/request   body:{ code }
-    //   POST   /api/friends/{id}/accept
-    //   POST   /api/friends/{id}/reject
-    //   DELETE /api/friends/{id}
-
-    let rankType = 'total';   // total | weekly
-    let rankScope = 'all';    // all | friend
+    let rankType = 'total';
+    let rankScope = 'all';
 
     document.addEventListener('DOMContentLoaded', function () {
       loadRank();
-      loadFriends();   // pendingCount 뱃지 먼저 채우려고 미리 호출
+      loadFriends();
     });
 
-    // ===== 메인 탭 전환 =====
     function switchMain(which) {
       const isRank = which === 'rank';
       document.getElementById('panel-rank').classList.toggle('d-none', !isRank);
@@ -141,13 +114,13 @@
       if (!isRank) loadFriends();
     }
 
-    // ===== 랭킹 =====
     function switchRankType(t) {
       rankType = t;
       document.getElementById('rk-total').classList.toggle('active', t === 'total');
       document.getElementById('rk-weekly').classList.toggle('active', t === 'weekly');
       loadRank();
     }
+
     function switchScope(s) {
       rankScope = s;
       document.getElementById('sc-all').classList.toggle('active', s === 'all');
@@ -178,7 +151,6 @@
     }
 
     function renderRank(top, me) {
-      // 내 순위 카드
       const myCard = document.getElementById('myRankCard');
       if (me) {
         document.getElementById('myRankNo').textContent = me.rank ?? '-';
@@ -212,7 +184,6 @@
       });
     }
 
-    // ===== 친구 =====
     async function loadFriends() {
       try {
         const res = await fetch('/api/friends', { headers: { 'Accept': 'application/json' } });
@@ -228,13 +199,15 @@
     function renderFriends(d) {
       document.getElementById('myFriendCode').textContent = d.myCode || '------';
 
-      // 받은신청 뱃지 (탭 + 헤더 둘 다)
       const pc = d.pendingCount ?? (d.received || []).length;
       const tabBadge = document.getElementById('friendPendingBadge');
-      if (pc > 0) { tabBadge.textContent = pc; tabBadge.classList.remove('d-none'); }
-      else tabBadge.classList.add('d-none');
+      if (pc > 0) {
+        tabBadge.textContent = pc;
+        tabBadge.classList.remove('d-none');
+      } else {
+        tabBadge.classList.add('d-none');
+      }
 
-      // 받은 신청
       const recv = d.received || [];
       const recvWrap = document.getElementById('friendPendingWrap');
       const recvBox = document.getElementById('friendPendingList');
@@ -246,7 +219,6 @@
           <button class="btn btn-sm btn-light" onclick="rejectFriend(${f.id})">거절</button>
         </div></div>`).join('');
 
-      // 내 친구
       const friends = d.friends || [];
       document.getElementById('friendCount').textContent = `${friends.length}/100`;
       document.getElementById('friendList').innerHTML = friends.length ? friends.map(f => `
@@ -261,7 +233,6 @@
         </div></div>`).join('')
         : '<div class="text-center text-gray-400 py-4 fs-8">아직 친구가 없어요. 친구코드로 추가해보세요!</div>';
 
-      // 보낸 신청
       const sent = d.sent || [];
       const sentWrap = document.getElementById('friendSentWrap');
       sentWrap.classList.toggle('d-none', sent.length === 0);
@@ -269,6 +240,7 @@
         <div class="card shadow-sm"><div class="card-body py-2 d-flex align-items-center gap-2">
           <div class="flex-grow-1 fw-semibold fs-7 text-gray-600">${f.nickname}</div>
           <span class="badge badge-light-secondary">대기중</span>
+          <button class="btn btn-sm btn-light-danger" onclick="cancelFriendRequest(${f.id}, '${f.nickname}')">취소</button>
         </div></div>`).join('');
     }
 
@@ -282,37 +254,114 @@
         loadFriends();
       }
     }
-    async function acceptFriend(id) { if (await postFriend(`/api/friends/${id}/accept`)) { toast('친구가 되었어요! 🎉'); loadFriends(); } }
-    async function rejectFriend(id) { if (await postFriend(`/api/friends/${id}/reject`)) loadFriends(); }
-    async function deleteFriend(id, name) {
-      const c = await Swal.fire({
-        text: `${name}님을 친구에서 삭제할까요?`, icon: 'warning', showCancelButton: true,
-        confirmButtonText: '삭제', cancelButtonText: '취소', buttonsStyling: false,
-        customClass: { confirmButton: 'btn btn-danger', cancelButton: 'btn btn-light' }
-      });
-      if (!c.isConfirmed) return;
-      const res = await fetch(`/api/friends/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
-      if (res.ok) loadFriends(); else warn('삭제에 실패했어요.');
+
+    async function acceptFriend(id) {
+      if (await postFriend(`/api/friends/${id}/accept`)) {
+        toast('친구가 되었어요! 🎉');
+        loadFriends();
+      }
     }
 
-    // 친구 POST 공통
+    async function rejectFriend(id) {
+      if (await postFriend(`/api/friends/${id}/reject`)) {
+        loadFriends();
+      }
+    }
+
+    async function cancelFriendRequest(id, name) {
+      const c = await Swal.fire({
+        text: `${name}님에게 보낸 친구 신청을 취소할까요?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '취소하기',
+        cancelButtonText: '그대로 두기',
+        buttonsStyling: false,
+        customClass: {
+          confirmButton: 'btn btn-danger',
+          cancelButton: 'btn btn-light'
+        }
+      });
+
+      if (!c.isConfirmed) return;
+
+      const res = await fetch(`/api/friends/${id}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.result === false) {
+        warn(data.message || '친구 신청 취소에 실패했어요.');
+        return;
+      }
+
+      toast('친구 신청을 취소했어요.');
+      loadFriends();
+    }
+
+    async function deleteFriend(id, name) {
+      const c = await Swal.fire({
+        text: `${name}님을 친구에서 삭제할까요?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '삭제',
+        cancelButtonText: '취소',
+        buttonsStyling: false,
+        customClass: {
+          confirmButton: 'btn btn-danger',
+          cancelButton: 'btn btn-light'
+        }
+      });
+
+      if (!c.isConfirmed) return;
+
+      const res = await fetch(`/api/friends/${id}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (res.ok) {
+        loadFriends();
+      } else {
+        warn('삭제에 실패했어요.');
+      }
+    }
+
     async function postFriend(url, body = null) {
       try {
         const opt = { method: 'POST', headers: { 'Accept': 'application/json' } };
-        if (body) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+        if (body) {
+          opt.headers['Content-Type'] = 'application/json';
+          opt.body = JSON.stringify(body);
+        }
         const res = await fetch(url, opt);
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.result === false) throw new Error(data.message || '요청에 실패했어요.');
         return true;
-      } catch (e) { warn(e.message); return false; }
+      } catch (e) {
+        warn(e.message);
+        return false;
+      }
     }
 
     function warn(msg) {
-      Swal.fire({ text: msg, icon: 'warning', buttonsStyling: false,
-        confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' } });
+      Swal.fire({
+        text: msg,
+        icon: 'warning',
+        buttonsStyling: false,
+        confirmButtonText: '확인',
+        customClass: { confirmButton: 'btn btn-primary' }
+      });
     }
+
     function toast(msg) {
-      Swal.fire({ text: msg, icon: 'success', timer: 1400, showConfirmButton: false });
+      Swal.fire({
+        text: msg,
+        icon: 'success',
+        timer: 1400,
+        showConfirmButton: false
+      });
     }
   </script>
 </body>
