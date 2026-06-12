@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
  * - 치팅 감사: 비정상 주간 Exp 추적.
  *
  * ⚠️ 'Rank'는 MySQL8 예약어 → 컬럼명 'Ranking' 사용 (필드는 ranking).
+ * ⚠️ 길드 기능 제외 → Scope/ScopeRefId 컬럼 제거 (전체 랭킹만).
  */
 @Entity
 @Table(name = "tbRankSnapshot")

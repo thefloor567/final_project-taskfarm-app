@@ -25,4 +25,9 @@ public class PolicyController extends AdminBaseController {
         // 🔜 if (!isAdmin()) return "redirect:/";
         return "policies/events";
     }
+
+    @GetMapping("/policies/achievements")
+    public String achievementPolicy() {
+        return "policies/achievements";
+    }
 }
