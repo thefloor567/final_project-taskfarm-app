@@ -4,18 +4,71 @@
 <body>
 
     <!-- 기본 홈 헤더 -->
+    <!--
+      우상단 액션: [소셜 🏆] [우편 ✉️(안읽음 뱃지)] [마이 👤]
+      - header-main은 home·farm 공유 프래그먼트 → 어디서든 소셜/우편 접근 가능.
+      - 우편 안읽음 수는 페이지 로드 시 refreshMailBadge()가 GET /api/mails로 채움.
+        🚧 API: GET /api/mails → { data: { unread: 3, mails:[...] } }  (unread = 미수령 수)
+    -->
     <th:block th:fragment="header-main">
         <div class="d-flex flex-column-auto bg-white border-bottom px-4 py-3">
             <div class="d-flex justify-content-between align-items-center w-100">
                 <span class="fw-bolder fs-3 text-gray-900">🌾 TaskFarm</span>
-                <a href="/mypage" class="btn btn-sm btn-icon btn-light">
-                    <i class="ki-duotone ki-user fs-3">
-                        <span class="path1"></span>
-                        <span class="path2"></span>
-                    </i>
-                </a>
+                <div class="d-flex align-items-center gap-2">
+
+                    <!-- 소셜 (랭킹/친구) -->
+                    <a href="/social" class="btn btn-sm btn-icon btn-light" title="소셜">
+                        <i class="ki-duotone ki-medal-star fs-3">
+                            <span class="path1"></span>
+                            <span class="path2"></span>
+                            <span class="path3"></span>
+                            <span class="path4"></span>
+                        </i>
+                    </a>
+
+                    <!-- 우편함 (안읽음 뱃지) -->
+                    <a href="/mails" class="btn btn-sm btn-icon btn-light position-relative" title="우편함">
+                        <i class="ki-duotone ki-sms fs-3">
+                            <span class="path1"></span>
+                            <span class="path2"></span>
+                        </i>
+                        <span id="mailBadge"
+                              class="badge badge-circle badge-danger position-absolute d-none"
+                              style="top:-4px; right:-4px; font-size:9px; min-width:16px; height:16px; padding:0 4px;">0</span>
+                    </a>
+
+                    <!-- 마이페이지 -->
+                    <a href="/mypage" class="btn btn-sm btn-icon btn-light" title="마이">
+                        <i class="ki-duotone ki-user fs-3">
+                            <span class="path1"></span>
+                            <span class="path2"></span>
+                        </i>
+                    </a>
+
+                </div>
             </div>
         </div>
+
+        <!-- 우편 안읽음 뱃지 갱신 (header-main 쓰는 모든 페이지에서 자동 실행) -->
+        <script>
+            async function refreshMailBadge() {
+                try {
+                    const res = await fetch('/api/mails', { headers: { 'Accept': 'application/json' } });
+                    if (!res.ok) return;
+                    const body = await res.json();
+                    const unread = (body.data ?? body).unread ?? 0;
+                    const el = document.getElementById('mailBadge');
+                    if (!el) return;
+                    if (unread > 0) {
+                        el.textContent = unread > 99 ? '99+' : unread;
+                        el.classList.remove('d-none');
+                    } else {
+                        el.classList.add('d-none');
+                    }
+                } catch (e) { /* 뱃지는 실패해도 조용히 무시 */ }
+            }
+            document.addEventListener('DOMContentLoaded', refreshMailBadge);
+        </script>
     </th:block>
 
     <!-- 뒤로가기 헤더 -->

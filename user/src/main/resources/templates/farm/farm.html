@@ -32,6 +32,13 @@
                 <div class="fw-bold fs-5 text-gray-900" id="cropCount">0</div>
                 <div class="fs-9 text-gray-500">작물</div>
               </div>
+              <div style="width:1px;height:40px;background:#eee;"></div>
+              <!-- 시드스트릭: 연속 완료일. 높을수록 좋은 이벤트 확률↑ (설계서 1번) -->
+              <div class="text-center">
+                <div style="font-size:24px;">🔥</div>
+                <div class="fw-bold fs-5 text-gray-900" id="streak">0</div>
+                <div class="fs-9 text-gray-500">스트릭</div>
+              </div>
             </div>
           </div>
         </div>
@@ -48,37 +55,45 @@
           </div>
         </div>
 
-        <!-- 바로가기 (상점/인벤토리/주문) -->
+        <!-- 바로가기 (씨앗/도구/밭/인벤토리/주문) -->
         <div class="row g-2">
-          <div class="col-3">
+          <div class="col">
             <div class="card shadow-sm h-100" style="cursor:pointer;" onclick="location.href='/farm/shop/seeds'">
               <div class="card-body text-center py-3 px-1">
-                <div style="font-size:24px;">🌱</div>
-                <div class="fs-9 fw-semibold text-gray-700 mt-1">씨앗상점</div>
+                <div style="font-size:22px;">🌱</div>
+                <div class="fs-9 fw-semibold text-gray-700 mt-1">씨앗</div>
               </div>
             </div>
           </div>
-          <div class="col-3">
+          <div class="col">
             <div class="card shadow-sm h-100" style="cursor:pointer;" onclick="location.href='/farm/shop/tools'">
               <div class="card-body text-center py-3 px-1">
-                <div style="font-size:24px;">🛠️</div>
-                <div class="fs-9 fw-semibold text-gray-700 mt-1">도구상점</div>
+                <div style="font-size:22px;">🛠️</div>
+                <div class="fs-9 fw-semibold text-gray-700 mt-1">도구</div>
               </div>
             </div>
           </div>
-          <div class="col-3">
+          <div class="col">
+            <div class="card shadow-sm h-100" style="cursor:pointer;" onclick="location.href='/farm/shop/plots'">
+              <div class="card-body text-center py-3 px-1">
+                <div style="font-size:22px;">🟫</div>
+                <div class="fs-9 fw-semibold text-gray-700 mt-1">밭</div>
+              </div>
+            </div>
+          </div>
+          <div class="col">
             <div class="card shadow-sm h-100" style="cursor:pointer;" onclick="location.href='/farm/inventory'">
               <div class="card-body text-center py-3 px-1">
-                <div style="font-size:24px;">🎒</div>
-                <div class="fs-9 fw-semibold text-gray-700 mt-1">인벤토리</div>
+                <div style="font-size:22px;">🎒</div>
+                <div class="fs-9 fw-semibold text-gray-700 mt-1">인벤</div>
               </div>
             </div>
           </div>
-          <div class="col-3">
+          <div class="col">
             <div class="card shadow-sm h-100" style="cursor:pointer;" onclick="location.href='/farm/orders'">
               <div class="card-body text-center py-3 px-1">
-                <div style="font-size:24px;">📋</div>
-                <div class="fs-9 fw-semibold text-gray-700 mt-1">주민주문</div>
+                <div style="font-size:22px;">📋</div>
+                <div class="fs-9 fw-semibold text-gray-700 mt-1">주문</div>
               </div>
             </div>
           </div>
@@ -101,12 +116,32 @@
   <script th:src="@{/js/scripts.bundle.js}"></script>
   <script>
     // ✅ 서버 권위. 모든 상태는 GET /api/farm 응답으로 채운다. (프론트 더미 금지)
-    let farm = { drops: 0, coin: 0, cropCount: 0, scarecrowLeft: 0 };
+    //
+    // 🚧 확장 필드 (설계서 반영 — 백엔드 챗에 전달):
+    //   data.streak               : 연속 완료일 (tbUser.Streak)
+    //   data.plots[].effects      : 그 밭에 설치된 도구 효과 (tbPlotEffect)
+    //                               예: [{ type:'scarecrow', remainUses:3 }, { type:'greenhouse' }]
+    //   data.plots[].threat       : 그 밭이 오늘 노려진 위협 (tbEventTarget)
+    //                               예: { type:'crow', defended:true }  (defended=IsDefended)
+    let farm = { drops: 0, coin: 0, cropCount: 0, streak: 0 };
     let plots = [];
     let event = null;
 
     // 작물 이름이 없을 때 상태별 폴백 이모지
     const STATUS_EMOJI = { growing: '🌱', ready: '🍅', withered: '🥀' };
+    // 밭에 붙은 도구 효과 뱃지 (tbPlotEffect)
+    const EFFECT_BADGE = {
+      scarecrow:  { emoji: '🧑\u200d🌾', label: '허수아비' },
+      greenhouse: { emoji: '🏡',         label: '온실' },
+      fertilizer: { emoji: '💩',         label: '비료' }
+    };
+    // 위협 이벤트 뱃지 (tbEventTarget)
+    const THREAT_BADGE = {
+      crow:    '🐦‍⬛',
+      drought: '☀️',
+      storm:   '🌪️',
+      pest:    '🐛'
+    };
 
     document.addEventListener('DOMContentLoaded', function () {
       loadFarm();
@@ -124,14 +159,16 @@
           drops: data.drops ?? 0,
           coin: data.coin ?? 0,
           cropCount: data.cropCount ?? 0,
-          scarecrowLeft: data.scarecrowLeft ?? 0
+          streak: data.streak ?? 0
         };
         plots = (data.plots ?? []).map(p => ({
           plotId: p.plotId,
           status: p.status,
           cropName: p.cropName,
           watered: p.watered ?? 0,
-          total: p.total ?? 0
+          total: p.total ?? 0,
+          effects: p.effects ?? [],   // tbPlotEffect: 밭별 설치 도구
+          threat: p.threat ?? null    // tbEventTarget: 오늘 이 밭이 노려진 위협
         }));
         event = data.event ?? null;
 
@@ -152,6 +189,7 @@
       document.getElementById('water').textContent = farm.drops;
       document.getElementById('coin').textContent = farm.coin;
       document.getElementById('cropCount').textContent = farm.cropCount;
+      document.getElementById('streak').textContent = farm.streak;
     }
 
     function showEvent() {
@@ -191,9 +229,33 @@
           bg = '#FFF5F8'; action = `removeCrop(${p.plotId})`;
         }
 
+        // 밭별 도구 효과 뱃지 (tbPlotEffect) — 카드 좌상단
+        const effectBadges = (p.effects || []).map(e => {
+          const b = EFFECT_BADGE[e.type];
+          if (!b) return '';
+          const uses = e.remainUses != null ? ` ${e.remainUses}` : '';
+          return `<span class="badge badge-sm badge-light-primary"
+                        title="${b.label}">${b.emoji}${uses}</span>`;
+        }).join('');
+
+        // 오늘 이 밭이 노려진 위협 (tbEventTarget) — 방어되면 초록, 아니면 빨강 테두리
+        let threatTag = '', threatBorder = '';
+        if (p.threat) {
+          const temoji = THREAT_BADGE[p.threat.type] || '⚠️';
+          if (p.threat.defended) {
+            threatTag = `<span class="badge badge-sm badge-light-success">${temoji} 방어</span>`;
+            threatBorder = 'border:2px solid var(--bs-success);';
+          } else {
+            threatTag = `<span class="badge badge-sm badge-light-danger">${temoji} 위협</span>`;
+            threatBorder = 'border:2px solid var(--bs-danger);';
+          }
+        }
+
         col.innerHTML = `
-            <div class="card shadow-sm" style="cursor:pointer;background:${bg};"
+            <div class="card shadow-sm position-relative" style="cursor:pointer;background:${bg};${threatBorder}"
                  onclick="${action}">
+                ${effectBadges ? `<div class="position-absolute top-0 start-0 m-1 d-flex gap-1">${effectBadges}</div>` : ''}
+                ${threatTag ? `<div class="position-absolute top-0 end-0 m-1">${threatTag}</div>` : ''}
                 <div class="card-body text-center py-4 px-1">${inner}</div>
             </div>
         `;

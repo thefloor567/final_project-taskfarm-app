@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('랭킹 감사')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('rankAudit')}"></div>
+
+    <div class="admin-content">
+
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">랭킹 감사</h1>
+      <p class="text-gray-500 fs-6 mb-6">주간 확정 순위 조회 · 비정상 경험치 급상승 탐지</p>
+
+      <!-- 조회 조건 -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold text-gray-700">주차 (Period)</label>
+              <input type="text" id="period" class="form-control" placeholder="예: 2026W24">
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold text-gray-700">범위</label>
+              <select id="scope" class="form-select">
+                <option value="all">전체</option>
+                <option value="guild">길드</option>
+              </select>
+            </div>
+            <div class="col-sm-4">
+              <button class="btn btn-primary w-100" onclick="loadSnapshot()">조회</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 안내 -->
+      <div class="card shadow-sm mb-4 border-0" style="background:#FFF5F8;">
+        <div class="card-body py-3">
+          <span class="fs-7 text-gray-700">
+            🔍 <b>주간 획득 Exp가 비정상적으로 높은 유저</b>는 빨간색으로 강조됩니다 (평균의 3배 초과 기준).
+            의심 유저는 tbExpLedger 상세 적립내역을 추가 확인하세요.
+          </span>
+        </div>
+      </div>
+
+      <!-- 결과 테이블 -->
+      <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h3 class="card-title fs-5">확정 순위 <span id="periodLabel" class="text-gray-400 fs-7"></span></h3>
+          <span id="flagCount" class="badge badge-light-danger d-none">의심 0건</span>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-row-bordered align-middle">
+              <thead>
+                <tr class="fw-bold fs-7 text-gray-500 text-uppercase">
+                  <th style="width:70px;">순위</th>
+                  <th>유저</th>
+                  <th style="width:160px;">주간 Exp</th>
+                  <th style="width:120px;">상태</th>
+                </tr>
+              </thead>
+              <tbody id="rankBody">
+                <tr><td colspan="4" class="text-center text-gray-400 py-5">주차를 입력하고 조회하세요.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    // 🚧 API (어드민 /admin/api):
+    //   GET /admin/api/ops/rank/snapshots?period=2026W24&scope=all
+    //     → data:[{ rank, userId, nickname, weeklyExp }]  (tbRankSnapshot 조회)
+    //   ※ 비정상 탐지는 프론트에서 평균 대비 계산(간이). 정밀 감사는 tbExpLedger 별도 조회.
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    function loadSnapshot() {
+      const period = document.getElementById('period').value.trim();
+      const scope = document.getElementById('scope').value;
+      if (!period) return warn('주차(Period)를 입력해주세요. 예: 2026W24');
+
+      const body = document.getElementById('rankBody');
+      body.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-5">불러오는 중…</td></tr>';
+
+      fetch(`/admin/api/ops/rank/snapshots?period=${encodeURIComponent(period)}&scope=${scope}`)
+        .then(res => res.json())
+        .then(res => render(res.data || [], period))
+        .catch(() => {
+          body.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-5">조회에 실패했어요.</td></tr>';
+        });
+    }
+
+    function render(rows, period) {
+      document.getElementById('periodLabel').textContent = period ? `(${period})` : '';
+      const body = document.getElementById('rankBody');
+
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-5">해당 주차 스냅샷이 없어요.</td></tr>';
+        document.getElementById('flagCount').classList.add('d-none');
+        return;
+      }
+
+      // 간이 이상치 탐지: 평균의 3배 초과
+      const avg = rows.reduce((s, r) => s + (r.weeklyExp || 0), 0) / rows.length;
+      const threshold = avg * 3;
+      let flagged = 0;
+
+      body.innerHTML = rows.map(r => {
+        const suspicious = (r.weeklyExp || 0) > threshold && rows.length > 3;
+        if (suspicious) flagged++;
+        return `
+          <tr class="${suspicious ? 'bg-light-danger' : ''}">
+            <td class="fw-bold">${r.rank}</td>
+            <td>
+              <span class="fw-semibold text-gray-900">${r.nickname}</span>
+              <span class="fs-9 text-gray-400">#${r.userId}</span>
+            </td>
+            <td class="fw-bold ${suspicious ? 'text-danger' : 'text-gray-700'}">${(r.weeklyExp || 0).toLocaleString()}</td>
+            <td>${suspicious
+              ? '<span class="badge badge-light-danger">⚠️ 의심</span>'
+              : '<span class="badge badge-light-success">정상</span>'}</td>
+          </tr>`;
+      }).join('');
+
+      const fc = document.getElementById('flagCount');
+      fc.textContent = `의심 ${flagged}건`;
+      fc.classList.toggle('d-none', flagged === 0);
+    }
+
+    function warn(msg) {
+      Swal.fire({ text: msg, icon: 'warning', buttonsStyling: false,
+        confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' } });
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('업적')}"></head>
+
+<body>
+  <div class="app-shell">
+
+    <div th:replace="~{fragments/header :: header-back('업적 · 칭호')}"></div>
+
+    <div id="scrollContainer">
+      <div class="p-4 d-flex flex-column gap-3">
+
+        <!-- 장착 칭호 + 달성 요약 -->
+        <div class="card shadow-sm border-0" style="background:linear-gradient(135deg,#7239EA,#5014D0);">
+          <div class="card-body py-4 text-white">
+            <div class="fs-8 opacity-75">대표 칭호</div>
+            <div class="fw-bolder fs-3" id="equippedTitle">칭호 없음</div>
+            <div class="fs-8 opacity-75 mt-2">달성 <span id="achievedCount">0</span> / <span id="totalCount">0</span></div>
+          </div>
+        </div>
+
+        <!-- 카테고리 필터 -->
+        <div class="d-flex gap-2 overflow-auto pb-1" id="catFilter">
+          <button class="btn btn-sm btn-primary"   data-cat="all"    onclick="filterCat('all')">전체</button>
+          <button class="btn btn-sm btn-light"      data-cat="todo"   onclick="filterCat('todo')">📋 할일</button>
+          <button class="btn btn-sm btn-light"      data-cat="farm"   onclick="filterCat('farm')">🌾 농장</button>
+          <button class="btn btn-sm btn-light"      data-cat="event"  onclick="filterCat('event')">🎉 이벤트</button>
+          <button class="btn btn-sm btn-light"      data-cat="ai"     onclick="filterCat('ai')">🤖 AI</button>
+          <button class="btn btn-sm btn-light"      data-cat="social" onclick="filterCat('social')">👥 소셜</button>
+        </div>
+
+        <!-- 업적 목록 -->
+        <div id="achList" class="d-flex flex-column gap-2"></div>
+
+      </div>
+    </div>
+
+    <div th:replace="~{fragments/navbar :: navbar-main('')}"></div>
+
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    // ✅ 서버 권위. 달성여부·진행도·보상 전부 서버 처리. (프론트 직접달성/지급 금지)
+    //
+    // 🚧 API 계약 (명세 3번 — 백엔드 챗에 전달):
+    //   GET /api/achievements
+    //     → { data: { equippedTitle:'🌾 초보농부',
+    //                 list:[ { code, name, title, category,
+    //                          condValue, progress, achieved,
+    //                          rewardCoin } ] } }
+    //       progress = 현재 집계값 (condValue 도달 시 achieved=true)
+    //       집계 출처는 명세 3-5표로 고정 (코드마다 다르게 세지 말 것)
+    //   PUT /api/achievements/title   body:{ title }
+    //     → 대표 칭호 장착. ⚠️ 본인 보유(달성) 칭호인지 서버에서 검증 (남의 칭호 차단)
+
+    let achievements = [];
+    let equipped = '';
+    let curCat = 'all';
+
+    const CAT_LABEL = { todo:'📋', farm:'🌾', event:'🎉', ai:'🤖', social:'👥' };
+
+    document.addEventListener('DOMContentLoaded', loadAch);
+
+    async function loadAch() {
+      const box = document.getElementById('achList');
+      box.innerHTML = '<div class="text-center text-gray-400 py-4">불러오는 중…</div>';
+      try {
+        const res = await fetch('/api/achievements', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('업적을 불러오지 못했어요.');
+        const d = (await res.json()).data ?? {};
+        achievements = d.list || [];
+        equipped = d.equippedTitle || '';
+        renderHeader();
+        render();
+      } catch (e) {
+        box.innerHTML = `<div class="text-center text-danger py-4 fs-8">${e.message}</div>`;
+      }
+    }
+
+    function renderHeader() {
+      document.getElementById('equippedTitle').textContent = equipped || '칭호 없음';
+      const done = achievements.filter(a => a.achieved).length;
+      document.getElementById('achievedCount').textContent = done;
+      document.getElementById('totalCount').textContent = achievements.length;
+    }
+
+    function filterCat(cat) {
+      curCat = cat;
+      document.querySelectorAll('#catFilter button').forEach(b => {
+        const on = b.dataset.cat === cat;
+        b.classList.toggle('btn-primary', on);
+        b.classList.toggle('btn-light', !on);
+      });
+      render();
+    }
+
+    function render() {
+      const box = document.getElementById('achList');
+      const list = curCat === 'all' ? achievements : achievements.filter(a => a.category === curCat);
+      box.innerHTML = '';
+      if (!list.length) {
+        box.innerHTML = '<div class="text-center text-gray-400 py-4 fs-8">해당 업적이 없어요.</div>';
+        return;
+      }
+
+      list.forEach(a => {
+        const done = a.achieved;
+        const prog = Math.min(a.progress ?? 0, a.condValue);
+        const pct = a.condValue ? Math.floor((prog / a.condValue) * 100) : 0;
+        const isEquipped = done && a.title === equipped;
+
+        const card = document.createElement('div');
+        card.className = 'card shadow-sm' + (done ? '' : ' opacity-75');
+        card.innerHTML = `
+          <div class="card-body py-3">
+            <div class="d-flex align-items-center gap-3">
+              <div style="font-size:30px;${done ? '' : 'filter:grayscale(1);opacity:.5;'}">
+                ${a.title.split(' ')[0] || '🏅'}
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-bold fs-7 text-gray-900">
+                  ${a.name}
+                  ${done ? '<span class="badge badge-sm badge-light-success ms-1">달성</span>' : ''}
+                </div>
+                <div class="fs-9 text-gray-500">${a.title} · 🪙 ${a.rewardCoin}</div>
+                ${done ? '' : `
+                  <div class="progress mt-2" style="height:5px;">
+                    <div class="progress-bar bg-primary" style="width:${pct}%"></div>
+                  </div>
+                  <div class="fs-9 text-gray-400 mt-1">${prog} / ${a.condValue}</div>`}
+              </div>
+              ${done ? `
+                <button class="btn btn-sm ${isEquipped ? 'btn-light text-gray-400' : 'btn-light-primary'}"
+                        ${isEquipped ? 'disabled' : ''}
+                        onclick="equipTitle('${a.title.replace(/'/g, "\\'")}')">
+                  ${isEquipped ? '장착중' : '장착'}
+                </button>` : ''}
+            </div>
+          </div>`;
+        box.appendChild(card);
+      });
+    }
+
+    async function equipTitle(title) {
+      try {
+        const res = await fetch('/api/achievements/title', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ title })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.result === false) throw new Error(data.message || '장착에 실패했어요.');
+        equipped = title;
+        renderHeader();
+        render();
+        Swal.fire({ text: `「${title}」 칭호를 장착했어요!`, icon: 'success', timer: 1400, showConfirmButton: false });
+      } catch (e) {
+        Swal.fire({ text: e.message, icon: 'warning', buttonsStyling: false,
+          confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' } });
+      }
+    }
+  </script>
+</body>
+
+</html>

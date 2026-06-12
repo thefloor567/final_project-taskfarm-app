@@ -16,6 +16,9 @@
           <div class="card-body text-center py-5">
             <div style="font-size:64px;">🧑‍🌾</div>
             <h2 class="fw-bolder fs-3 text-gray-900 mt-3" id="nickname">농부</h2>
+            <div id="titleBadgeWrap" class="d-none mt-1">
+              <span class="badge badge-light-primary fs-7" id="titleBadge"></span>
+            </div>
             <p class="text-gray-500 fs-7 mb-0" id="email">email@example.com</p>
             <div class="d-flex justify-content-center gap-4 mt-3">
               <div class="text-center">
@@ -33,6 +36,12 @@
         <!-- 메뉴 -->
         <div class="card shadow-sm">
           <div class="card-body p-0">
+            <div class="menu-item d-flex justify-content-between align-items-center px-4 py-4 border-bottom"
+              style="cursor:pointer;" onclick="location.href='/achievements'">
+              <span class="fw-semibold fs-6 text-gray-800">🏆 업적 · 칭호</span>
+              <i class="ki-duotone ki-arrow-right fs-3 text-gray-400"><span class="path1"></span><span
+                  class="path2"></span></i>
+            </div>
             <div class="menu-item d-flex justify-content-between align-items-center px-4 py-4 border-bottom"
               style="cursor:pointer;" onclick="openEditProfile()">
               <span class="fw-semibold fs-6 text-gray-800">✏️ 프로필 수정</span>
@@ -154,6 +163,8 @@
           profile.email = result.data.email;
           profile.level = result.data.level;
           profile.joinDays = result.data.joinDays || 0;
+          // 🚧 GET /api/user/me 응답에 equippedTitle 추가 필요 (tbUser.EquippedTitle)
+          profile.equippedTitle = result.data.equippedTitle || '';
         }
 
         renderProfile();
@@ -169,6 +180,15 @@
       document.getElementById('email').textContent = profile.email;
       document.getElementById('level').textContent = 'Lv.' + profile.level;
       document.getElementById('joinDays').textContent = profile.joinDays + '일';
+
+      // 장착 칭호 뱃지 (자랑용 — 랭킹·친구목록에도 같은 값이 노출됨)
+      const wrap = document.getElementById('titleBadgeWrap');
+      if (profile.equippedTitle) {
+        document.getElementById('titleBadge').textContent = profile.equippedTitle;
+        wrap.classList.remove('d-none');
+      } else {
+        wrap.classList.add('d-none');
+      }
     }
 
     // 프로필 수정

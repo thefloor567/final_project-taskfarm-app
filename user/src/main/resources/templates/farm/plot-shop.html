@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('밭 상점')}"></head>
+
+<body>
+  <div class="app-shell">
+
+    <div th:replace="~{fragments/header :: header-back('밭 상점')}"></div>
+
+    <div id="scrollContainer">
+      <div class="p-4 d-flex flex-column gap-3">
+
+        <!-- 보유 코인 + 현재 레벨 -->
+        <div class="card shadow-sm">
+          <div class="card-body py-3 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold fs-6 text-gray-700">
+              보유 코인 · <span class="text-gray-500">Lv <span id="level">0</span></span>
+            </span>
+            <span class="fw-bolder fs-4 text-gray-900">🪙 <span id="coin">0</span></span>
+          </div>
+        </div>
+
+        <div class="text-gray-500 fs-8 px-1">
+          밭을 늘리면 한 번에 더 많은 작물을 키울 수 있어요. 레벨이 오를수록 새 밭이 해금돼요.
+        </div>
+
+        <!-- 밭 슬롯 목록 -->
+        <div id="plotContainer" class="d-flex flex-column gap-2"></div>
+
+      </div>
+    </div>
+
+    <div th:replace="~{fragments/navbar :: navbar-main('farm')}"></div>
+
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    // ✅ 서버 권위. coin·레벨·해금여부·가격 전부 서버 처리. (프론트 더미·직접차감 금지)
+    //
+    // 🚧 필요한 API 계약 (백엔드 챗에 전달):
+    //   GET  /api/shop/plots
+    //     → [{ slot:7, unlockLevel:3, price:200, owned:false, locked:true }, ...]
+    //       owned  : 이미 보유한 밭 슬롯
+    //       locked : 레벨 미달로 아직 못 사는 슬롯
+    //   POST /api/shop/plots/{slot}/buy
+    //     → 레벨·코인 검증 후 tbPlot에 row insert (설계서 2번)
+    //   ※ coin·level 은 GET /api/farm 스냅샷에서 가져옴 (tool-shop과 동일 패턴)
+    let coin = 0;
+    let level = 0;
+    let plots = [];
+
+    document.addEventListener('DOMContentLoaded', function () {
+      loadShop();
+    });
+
+    async function loadShop() {
+      try {
+        // 코인·레벨은 농장 스냅샷에서 (tool-shop과 동일)
+        const farmRes = await fetch('/api/farm', { headers: { 'Accept': 'application/json' } });
+        const farmBody = await farmRes.json();
+        const f = farmBody.data ?? farmBody;
+        coin = f.coin ?? 0;
+        level = f.level ?? 0;
+
+        const res = await fetch('/api/shop/plots', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('밭 상점을 불러오지 못했어요.');
+        const body = await res.json();
+        plots = (body.data ?? body) || [];
+        render();
+      } catch (e) {
+        warn(e.message || '밭 상점을 불러오지 못했어요.');
+      }
+    }
+
+    function render() {
+      document.getElementById('coin').textContent = coin;
+      document.getElementById('level').textContent = level;
+      const box = document.getElementById('plotContainer');
+      box.innerHTML = '';
+
+      plots.forEach(p => {
+        const owned = p.owned;
+        const locked = p.locked;
+        const tooPoor = coin < p.price;
+        const disabled = owned || locked || tooPoor;
+
+        let btnLabel = `🪙 ${p.price}`;
+        if (owned) btnLabel = '보유 중';
+        else if (locked) btnLabel = `🔒 Lv ${p.unlockLevel}`;
+        else if (tooPoor) btnLabel = '코인 부족';
+
+        const card = document.createElement('div');
+        card.className = 'card shadow-sm';
+        card.innerHTML = `
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center gap-3 ${(locked && !owned) ? 'opacity-50' : ''}">
+                    <div style="font-size:36px;">${owned ? '🟩' : '🟫'}</div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold fs-6 text-gray-800">${p.slot}번 밭
+                          ${locked && !owned ? `<span class="badge badge-sm badge-light-danger ms-1">Lv ${p.unlockLevel} 해금</span>` : ''}
+                          ${owned ? `<span class="badge badge-sm badge-light-success ms-1">보유</span>` : ''}
+                        </div>
+                        <div class="fs-8 text-gray-500">새 밭을 열어 작물을 더 키워요</div>
+                    </div>
+                    <button class="btn btn-sm ${disabled ? 'btn-light text-gray-400' : 'btn-primary'}"
+                            ${disabled ? 'disabled' : ''}
+                            onclick="buyPlot(${p.slot})">
+                        ${btnLabel}
+                    </button>
+                </div>
+            </div>
+        `;
+        box.appendChild(card);
+      });
+    }
+
+    async function buyPlot(slot) {
+      const p = plots.find(x => x.slot === slot);
+      if (!p) return;
+      if (p.owned) return warn('이미 보유한 밭이에요.');
+      if (p.locked) return warn(`Lv ${p.unlockLevel}부터 살 수 있어요.`);
+      if (coin < p.price) return warn('코인이 부족해요!');
+
+      const ok = await Swal.fire({
+        html: `<b>${slot}번 밭</b>을 <b>🪙 ${p.price}</b>에 살까요?`,
+        icon: 'question', showCancelButton: true,
+        confirmButtonText: '사기', cancelButtonText: '취소', buttonsStyling: false,
+        customClass: { confirmButton: 'btn btn-primary', cancelButton: 'btn btn-light' }
+      });
+      if (!ok.isConfirmed) return;
+
+      try {
+        const res = await fetch(`/api/shop/plots/${slot}/buy`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || body.result === false) {
+          throw new Error(body.message || '구매에 실패했어요.');
+        }
+
+        await loadShop();
+        Swal.fire({
+          html: `<b>${slot}번 밭</b> 구매 완료! 🌻<br><span class="fs-7 text-gray-500">농장에서 바로 심어보세요</span>`,
+          icon: 'success', buttonsStyling: false, confirmButtonText: '확인',
+          customClass: { confirmButton: 'btn btn-primary' }
+        });
+      } catch (e) {
+        warn(e.message);
+      }
+    }
+
+    function warn(msg) {
+      Swal.fire({
+        text: msg, icon: 'warning', buttonsStyling: false,
+        confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' }
+      });
+    }
+
+  </script>
+</body>
+
+</html>

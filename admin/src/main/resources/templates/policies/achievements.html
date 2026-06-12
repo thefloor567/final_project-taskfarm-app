@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('업적 관리')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('achievements')}"></div>
+
+    <div class="admin-content">
+
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">업적 관리</h1>
+      <p class="text-gray-500 fs-6 mb-6">업적 콘텐츠 밸런스 조정 · 활성/비활성</p>
+
+      <!-- 안내 -->
+      <div class="card shadow-sm mb-4 border-0" style="background:#FFF8DD;">
+        <div class="card-body py-3">
+          <span class="fs-7 text-gray-700">
+            ⚖️ 목표치(CondValue)를 낮추면 기존 유저가 <b>소급 달성</b>될 수 있습니다. 보상 코인은 이후 달성부터 반영돼요. 신중하게 조정하세요.
+          </span>
+        </div>
+      </div>
+
+      <!-- 카테고리 필터 -->
+      <div class="d-flex gap-2 mb-4" id="catFilter">
+        <button class="btn btn-sm btn-primary" data-cat="all"    onclick="filterCat('all')">전체</button>
+        <button class="btn btn-sm btn-light"   data-cat="todo"   onclick="filterCat('todo')">할일</button>
+        <button class="btn btn-sm btn-light"   data-cat="farm"   onclick="filterCat('farm')">농장</button>
+        <button class="btn btn-sm btn-light"   data-cat="event"  onclick="filterCat('event')">이벤트</button>
+        <button class="btn btn-sm btn-light"   data-cat="ai"     onclick="filterCat('ai')">AI</button>
+        <button class="btn btn-sm btn-light"   data-cat="social" onclick="filterCat('social')">소셜</button>
+      </div>
+
+      <!-- 업적 테이블 -->
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h3 class="card-title fs-5">업적 목록 <span id="countLabel" class="text-gray-400 fs-7"></span></h3>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-row-bordered align-middle">
+              <thead>
+                <tr class="fw-bold fs-7 text-gray-500 text-uppercase">
+                  <th>코드 / 이름</th>
+                  <th>칭호</th>
+                  <th style="width:90px;">카테고리</th>
+                  <th style="width:130px;">조건</th>
+                  <th style="width:120px;">목표치</th>
+                  <th style="width:120px;">보상 코인</th>
+                  <th style="width:80px;">활성</th>
+                  <th style="width:90px;" class="text-end">저장</th>
+                </tr>
+              </thead>
+              <tbody id="achTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    // 🚧 API (어드민은 /admin/api 컨텍스트):
+    //   GET   /admin/api/policies/achievements
+    //     → data:[{ id, code, name, title, category, condType, condValue, rewardCoin, isActive }]
+    //   PATCH /admin/api/policies/achievements/{id}
+    //     body:{ condValue, rewardCoin, isActive }
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    let achievements = [];
+    let curCat = 'all';
+    const CAT_BADGE = { todo:'badge-light-primary', farm:'badge-light-success',
+                        event:'badge-light-warning', ai:'badge-light-info', social:'badge-light-danger' };
+
+    document.addEventListener('DOMContentLoaded', function () {
+      fetch('/admin/api/policies/achievements')
+        .then(res => res.json())
+        .then(res => { achievements = res.data || []; render(); })
+        .catch(err => console.error(err));
+    });
+
+    function filterCat(cat) {
+      curCat = cat;
+      document.querySelectorAll('#catFilter button').forEach(b => {
+        const on = b.dataset.cat === cat;
+        b.classList.toggle('btn-primary', on);
+        b.classList.toggle('btn-light', !on);
+      });
+      render();
+    }
+
+    function render() {
+      const list = curCat === 'all' ? achievements : achievements.filter(a => a.category === curCat);
+      document.getElementById('countLabel').textContent = `(${list.length})`;
+      const tbody = document.getElementById('achTableBody');
+      tbody.innerHTML = '';
+      list.forEach(a => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="fw-semibold text-gray-900">${a.name}</div>
+            <div class="fs-9 text-gray-400">${a.code}</div>
+          </td>
+          <td class="fs-7">${a.title}</td>
+          <td><span class="badge badge-sm ${CAT_BADGE[a.category] || 'badge-light-secondary'}">${a.category}</span></td>
+          <td class="fs-8 text-gray-500">${a.condType}</td>
+          <td><input type="number" class="form-control form-control-sm" min="1" value="${a.condValue}" id="cv-${a.id}"></td>
+          <td><input type="number" class="form-control form-control-sm" min="0" value="${a.rewardCoin}" id="rc-${a.id}"></td>
+          <td>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="act-${a.id}" ${a.isActive ? 'checked' : ''}>
+            </div>
+          </td>
+          <td class="text-end"><button class="btn btn-sm btn-light-primary" onclick="save(${a.id})">저장</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function save(id) {
+      const condValue = parseInt(document.getElementById('cv-' + id).value);
+      const rewardCoin = parseInt(document.getElementById('rc-' + id).value);
+      const isActive = document.getElementById('act-' + id).checked;
+
+      if (isNaN(condValue) || condValue < 1) return warn('목표치는 1 이상이어야 합니다.');
+      if (isNaN(rewardCoin) || rewardCoin < 0) return warn('보상 코인은 0 이상이어야 합니다.');
+
+      fetch(`/admin/api/policies/achievements/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ condValue, rewardCoin, isActive })
+      })
+        .then(res => res.json())
+        .then(res => {
+          if (res.result) {
+            const a = achievements.find(x => x.id === id);
+            if (a) { a.condValue = condValue; a.rewardCoin = rewardCoin; a.isActive = isActive; }
+            ok('업적이 저장되었습니다.');
+          } else warn(res.message || '저장 실패');
+        });
+    }
+
+    function warn(msg) {
+      Swal.fire({ text: msg, icon: 'warning', buttonsStyling: false,
+        confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' } });
+    }
+    function ok(msg) {
+      Swal.fire({ text: msg, icon: 'success', buttonsStyling: false,
+        confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' } });
+    }
+  </script>
+</body>
+
+</html>

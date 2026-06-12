@@ -37,9 +37,9 @@
     let tools = [];
 
     const EFFECT_TEXT = {
-      scarecrow: '병해충/시듦으로부터 밭을 방어해요 (방어 횟수 비축)',
+      scarecrow: '고른 밭을 까마귀로부터 지켜요 (밭에 설치, 방어 횟수 비축)',
       fertilizer: '고른 작물의 남은 물주기를 즉시 단축해요',
-      greenhouse: '오늘 하루 농장을 날씨/시듦으로부터 지켜요'
+      greenhouse: '고른 밭을 가뭄/시듦으로부터 지켜요 (밭에 설치)'
     };
     const TOOL_EMOJI = { scarecrow: '🧑\u200d🌾', fertilizer: '💩', greenhouse: '🏡' };
 
@@ -119,10 +119,16 @@
 
       let targetPlotId = null;
 
-      // 비료는 대상 작물 선택 필요
+      // 밭별 적용 도구는 대상 밭 선택 필요 (설계서 0번: tbPlotEffect)
+      //   - fertilizer : 성장 중(growing) 작물에만
+      //   - scarecrow/greenhouse : 작물 심긴 밭(growing/ready)에 설치
       if (t.type === 'fertilizer') {
-        targetPlotId = await pickCropForFertilizer();
-        if (!targetPlotId) return;   // 취소
+        targetPlotId = await pickPlot('어느 작물에 비료를 줄까요?', ['growing']);
+        if (!targetPlotId) return;   // 취소/대상없음
+      } else if (t.type === 'scarecrow' || t.type === 'greenhouse') {
+        const label = t.type === 'scarecrow' ? '어느 밭에 허수아비를 세울까요?' : '어느 밭에 온실을 칠까요?';
+        targetPlotId = await pickPlot(label, ['growing', 'ready']);
+        if (!targetPlotId) return;
       }
 
       try {
@@ -147,47 +153,48 @@
       }
     }
 
-    // 비료 대상 작물 선택 (성장 중인 작물만) — Select2
-    async function pickCropForFertilizer() {
-      // 농장에서 growing 작물 목록 가져오기
+    // 대상 밭 선택 — 밭별 적용 도구 공통 (비료/허수아비/온실)
+    //   statuses: 선택 가능한 밭 상태 필터 (예: ['growing'] 또는 ['growing','ready'])
+    // value = plotId (백엔드가 밭 기준으로 tbPlotEffect 설치 / 비료 적용)
+    async function pickPlot(title, statuses) {
       let plots = [];
       try {
         const res = await fetch('/api/farm', { headers: { 'Accept': 'application/json' } });
         const body = await res.json();
-        plots = ((body.data ?? body).plots || []).filter(p => p.status === 'growing');
+        plots = ((body.data ?? body).plots || []).filter(p => statuses.includes(p.status));
       } catch (e) {
-        warn('작물 정보를 불러오지 못했어요.');
+        warn('밭 정보를 불러오지 못했어요.');
         return null;
       }
 
       if (!plots.length) {
-        warn('비료를 줄 수 있는 (자라는 중인) 작물이 없어요.');
+        warn('적용할 수 있는 밭(작물)이 없어요.');
         return null;
       }
 
-      const optionsHtml = plots.map(p =>
-        `<option value="${p.plotId}">${p.cropName || '작물'} (물 ${p.watered}/${p.total})</option>`
-      ).join('');
+      const optionsHtml = plots.map(p => {
+        const water = p.total ? ` (물 ${p.watered}/${p.total})` : '';
+        return `<option value="${p.plotId}">${p.cropName || '작물'}${water}</option>`;
+      }).join('');
 
-      // value = plotId (백엔드가 밭 기준으로 그 밭의 작물에 비료 적용)
       const { value: plotId } = await Swal.fire({
-        title: '어느 작물에 비료를 줄까요?',
-        html: `<select id="cropSelect" class="form-select" style="width:100%">
+        title,
+        html: `<select id="plotSelect" class="form-select" style="width:100%">
                  <option></option>${optionsHtml}
                </select>`,
-        showCancelButton: true, confirmButtonText: '주기', cancelButtonText: '취소',
+        showCancelButton: true, confirmButtonText: '적용', cancelButtonText: '취소',
         buttonsStyling: false,
         customClass: { confirmButton: 'btn btn-primary', cancelButton: 'btn btn-light' },
         didOpen: () => {
-          $('#cropSelect').select2({
-            placeholder: '작물 선택',
+          $('#plotSelect').select2({
+            placeholder: '밭 선택',
             dropdownParent: $('.swal2-popup'),
             minimumResultsForSearch: Infinity
           });
         },
         preConfirm: () => {
-          const v = $('#cropSelect').val();
-          if (!v) { Swal.showValidationMessage('작물을 골라주세요.'); return false; }
+          const v = $('#plotSelect').val();
+          if (!v) { Swal.showValidationMessage('밭을 골라주세요.'); return false; }
           return v;
         }
       });

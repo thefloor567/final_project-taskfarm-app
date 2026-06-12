@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('우편함')}"></head>
+
+<body>
+  <div class="app-shell">
+
+    <div th:replace="~{fragments/header :: header-back('우편함')}"></div>
+
+    <div id="scrollContainer">
+      <div class="p-4 d-flex flex-column gap-3">
+
+        <!-- 일괄 수령 -->
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fs-8 text-gray-500">미수령 <span id="unreadCount">0</span>건</span>
+          <button id="claimAllBtn" class="btn btn-sm btn-light-primary" onclick="claimAll()">모두 받기</button>
+        </div>
+
+        <!-- 우편 목록 -->
+        <div id="mailList" class="d-flex flex-column gap-2"></div>
+
+      </div>
+    </div>
+
+    <div th:replace="~{fragments/navbar :: navbar-main('')}"></div>
+
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    // ✅ 서버 권위. 보상 지급은 전부 서버에서 멱등(CAS) 처리. (프론트 직접지급 금지)
+    //
+    // 🚧 API 계약 (명세 7번 — 백엔드 챗에 전달):
+    //   GET  /api/mails
+    //     → { data: { unread:2, mails:[
+    //          { id, title, body, rewardType:'COIN'|'TITLE'|'NONE',
+    //            rewardCoin, rewardTitle, source:'LEAGUE'|'GUILD'|'EVENT',
+    //            isClaimed, createDate } ] } }
+    //   POST /api/mails/{id}/claim     → 멱등(CAS): IsClaimed=0일 때만 지급
+    //   POST /api/mails/claim-all      → 미수령 일괄 수령
+    //   ※ 보상은 코인/칭호만. 물방울 지급 없음 (재화 원칙 3-0)
+
+    const SOURCE_LABEL = { LEAGUE: '🏅 리그', GUILD: '🛡️ 길드', EVENT: '🎉 이벤트', SYSTEM: '📢 운영' };
+
+    document.addEventListener('DOMContentLoaded', loadMails);
+
+    async function loadMails() {
+      const box = document.getElementById('mailList');
+      box.innerHTML = '<div class="text-center text-gray-400 py-4">불러오는 중…</div>';
+      try {
+        const res = await fetch('/api/mails', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('우편함을 불러오지 못했어요.');
+        const d = (await res.json()).data ?? {};
+        render(d.mails || [], d.unread ?? 0);
+      } catch (e) {
+        box.innerHTML = `<div class="text-center text-danger py-4 fs-8">${e.message}</div>`;
+      }
+    }
+
+    function rewardText(m) {
+      if (m.rewardType === 'COIN')  return `🪙 ${m.rewardCoin}`;
+      if (m.rewardType === 'TITLE') return `🏷️ ${m.rewardTitle}`;
+      return '';
+    }
+
+    function render(mails, unread) {
+      document.getElementById('unreadCount').textContent = unread;
+      document.getElementById('claimAllBtn').disabled = unread === 0;
+
+      const box = document.getElementById('mailList');
+      box.innerHTML = '';
+      if (!mails.length) {
+        box.innerHTML = '<div class="text-center text-gray-400 py-5 fs-8">📭 우편이 없어요.</div>';
+        return;
+      }
+
+      mails.forEach(m => {
+        const claimed = m.isClaimed;
+        const reward = rewardText(m);
+        const card = document.createElement('div');
+        card.className = 'card shadow-sm' + (claimed ? ' opacity-50' : '');
+        card.innerHTML = `
+          <div class="card-body py-3">
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+              <span class="badge badge-sm badge-light-secondary">${SOURCE_LABEL[m.source] || m.source || ''}</span>
+              ${claimed ? '<span class="badge badge-sm badge-light-success">수령완료</span>' : ''}
+            </div>
+            <div class="fw-bold fs-6 text-gray-900">${m.title}</div>
+            <div class="fs-8 text-gray-600 mb-2">${m.body || ''}</div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold fs-7 text-primary">${reward}</span>
+              ${claimed ? ''
+                : `<button class="btn btn-sm btn-primary" onclick="claim(${m.id})">받기</button>`}
+            </div>
+          </div>`;
+        box.appendChild(card);
+      });
+    }
+
+    // 단건 수령 — 따닥 클릭 방지 위해 버튼 즉시 비활성 (서버는 CAS로 멱등 보장)
+    async function claim(id, silent = false) {
+      try {
+        const res = await fetch(`/api/mails/${id}/claim`, {
+          method: 'POST', headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.result === false) throw new Error(data.message || '수령에 실패했어요.');
+        if (!silent) Swal.fire({ text: '보상을 받았어요! 🎁', icon: 'success', timer: 1300, showConfirmButton: false });
+        return true;
+      } catch (e) {
+        if (!silent) warn(e.message);
+        return false;
+      } finally {
+        if (!silent) loadMails();
+      }
+    }
+
+    async function claimAll() {
+      const btn = document.getElementById('claimAllBtn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/mails/claim-all', {
+          method: 'POST', headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.result === false) throw new Error(data.message || '일괄 수령에 실패했어요.');
+        Swal.fire({ text: '모든 보상을 받았어요! 🎁', icon: 'success', timer: 1300, showConfirmButton: false });
+      } catch (e) {
+        warn(e.message);
+      } finally {
+        loadMails();
+      }
+    }
+
+    function warn(msg) {
+      Swal.fire({ text: msg, icon: 'warning', buttonsStyling: false,
+        confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' } });
+    }
+  </script>
+</body>
+
+</html>
