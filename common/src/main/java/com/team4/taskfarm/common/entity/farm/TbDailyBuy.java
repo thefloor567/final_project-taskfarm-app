@@ -38,7 +38,7 @@ public class TbDailyBuy {
     @Column(name = "Cnt", nullable = false)
     private int cnt = 0;
 
-    public enum ItemType { SEED, TOOL }
+    public enum ItemType { SEED, TOOL, PLOT }   // PLOT 추가 (농장확장: 밭 구매도 하루한도 관리)
 
     // ✏️ TODO: increase()
 }

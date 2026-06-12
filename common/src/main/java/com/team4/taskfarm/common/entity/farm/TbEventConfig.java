@@ -30,6 +30,14 @@ public class TbEventConfig {
     @Column(name = "EventKey", nullable = false, length = 30)
     private String eventKey;
 
+    // 농장확장: 위협 이벤트의 타격 범위 (none=전역보너스, one/multi/all=대상 밭)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "Scope", nullable = false)
+    private Scope scope = Scope.none;
+
+    @Column(name = "ScopeCount", nullable = false)
+    private int scopeCount = 1;   // multi일 때 대상 밭 수
+
     @Column(name = "Weight", nullable = false)
     private int weight = 1;
 
@@ -40,9 +48,17 @@ public class TbEventConfig {
     @Column(name = "UpdateDate")
     private LocalDateTime updateDate;
 
+    public enum Scope { none, one, multi, all }
+
     /** 어드민 이벤트 정책 수정 (가중치/활성여부). */
     public void updatePolicy(int weight, boolean isActive) {
         this.weight = weight;
         this.isActive = isActive;
+    }
+
+    /** 농장확장: 타격 범위 수정 (어드민에서 scope 조정 시). */
+    public void updateScope(Scope scope, int scopeCount) {
+        this.scope = scope;
+        this.scopeCount = scopeCount;
     }
 }

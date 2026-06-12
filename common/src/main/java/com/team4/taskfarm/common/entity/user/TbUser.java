@@ -33,6 +33,10 @@ public class TbUser extends BaseEntity {
     @Column(name = "Nickname", nullable = false, length = 50)
     private String nickname;
 
+    // 소셜: 친구코드 (가입 시 랜덤·고유). 기존 유저는 마이그레이션으로 백필.
+    @Column(name = "FriendCode", length = 12)
+    private String friendCode;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "Role", nullable = false)
     private Role role = Role.ROLE_USER;
@@ -45,6 +49,10 @@ public class TbUser extends BaseEntity {
 
     @Column(name = "Streak", nullable = false)
     private int streak = 0;
+
+    // 업적: 장착 대표칭호 (랭킹·친구목록에 노출되는 자랑용). null=미장착.
+    @Column(name = "EquippedTitle", length = 50)
+    private String equippedTitle;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "Status", nullable = false)
@@ -71,12 +79,27 @@ public class TbUser extends BaseEntity {
         user.exp = 0;
         user.level = 1;
         user.streak = 0;
+        // ※ friendCode는 여기서 안 채움 — AuthService가 중복 없는 코드를
+        //   생성해 assignFriendCode()로 주입 (UNIQUE 충돌 시 재시도 책임은 서비스).
         return user;
     }
 
     // ───────── 프로필/계정 ─────────
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    // ───────── 소셜/업적 ─────────
+    /** 친구코드 부여 (가입 시 1회. 이미 있으면 변경하지 않음). */
+    public void assignFriendCode(String code) {
+        if (this.friendCode == null) {
+            this.friendCode = code;
+        }
+    }
+
+    /** 대표 칭호 장착. 보유(달성) 칭호인지는 서비스에서 검증 후 호출. */
+    public void equipTitle(String title) {
+        this.equippedTitle = title;
     }
 
     public void updatePass(String encodedPass) {
