@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 /**
  * 밭 재배 로직 (서버 권위).
  * 모든 동작은 "① 내 농장 확인 → ② 밭 소유 검증 → ③ 재화/상태 검증 → ④ 차감·변경"을 한 트랜잭션으로 처리.
+ * 보너스 이벤트(rain/harvest_bonus/fertile) 효과를 각 동작에서 적용.
  */
 @Service
 @RequiredArgsConstructor
@@ -27,37 +28,43 @@ public class FarmCultivationService {
     private final TbSeedRepository seedRepository;
     private final TbSeedInvRepository seedInvRepository;
     private final TbCropInvRepository cropInvRepository;
+    private final FarmEventService farmEventService;   // 오늘 이벤트(보너스 효과) 확인용
 
     /** 물주기 1회당 물방울 비용 */
     private static final int WATER_COST = 1;
 
     /**
      * 씨앗 심기. 보유 씨앗 1개 소비 → 밭에 growing 작물 생성.
+     * 비옥(fertile) 이벤트면 필요 물주기 1회 감소.
      */
     @Transactional
     public void plantSeed(Long idxUser, Long plotId, Long seedId) {
         TbFarm farm = getMyFarm(idxUser);
         TbPlot plot = getMyPlot(farm, plotId);
 
-        // 이미 작물이 있으면 못 심음
         cropRepository.findByIdxPlot(plot.getIdxPlot()).ifPresent(c -> {
             throw CustomException.badRequest("이미 작물이 자라고 있는 밭입니다.");
         });
 
-        // 씨앗 마스터(물주기 횟수 확인)
         TbSeed seed = seedRepository.findById(seedId)
                 .orElseThrow(() -> CustomException.notFound("씨앗 정보를 찾을 수 없습니다."));
 
-        // 보유 씨앗 차감 (없으면 엔티티에서 예외)
         TbSeedInv inv = seedInvRepository.findByIdxFarmAndIdxSeed(farm.getIdxFarm(), seedId)
                 .orElseThrow(() -> CustomException.badRequest("보유한 씨앗이 없습니다."));
         inv.consumeOne();
 
-        cropRepository.save(TbCrop.plant(plot.getIdxPlot(), seedId, seed.getWaters()));
+        // 비옥 이벤트: 그날 심는 작물은 물주기 1회 감소 (최소 1)
+        int waters = seed.getWaters();
+        if ("fertile".equals(todayEventKey(idxUser))) {
+            waters = Math.max(1, waters - 1);
+        }
+
+        cropRepository.save(TbCrop.plant(plot.getIdxPlot(), seedId, waters));
     }
 
     /**
      * 물주기. 물방울 1 소비 → watered+1. 다 채우면 ready.
+     * 단비(rain) 이벤트면 물방울 소비 없이 물주기.
      */
     @Transactional
     public void waterPlot(Long idxUser, Long plotId) {
@@ -67,13 +74,16 @@ public class FarmCultivationService {
         TbCrop crop = cropRepository.findByIdxPlot(plot.getIdxPlot())
                 .orElseThrow(() -> CustomException.badRequest("이 밭에는 작물이 없습니다."));
 
-        farm.spendDrops(WATER_COST);  // 물방울 부족 시 예외
-        crop.water();                 // growing 아니면 예외, total 채우면 ready
+        // 단비: 물방울 소비 없이 물주기 (평소엔 차감)
+        if (!"rain".equals(todayEventKey(idxUser))) {
+            farm.spendDrops(WATER_COST);   // 물방울 부족 시 예외
+        }
+        crop.water();                      // growing 아니면 예외, total 채우면 ready
     }
 
     /**
      * 수확. ready 작물 → 작물 인벤토리 적립 + 밭 비우기.
-     * 코인은 주민 주문 이행 때 지급(여기선 X). 풍년 보너스는 이벤트 도메인 연동 시.
+     * 풍년(harvest_bonus) 이벤트면 작물 +1.
      */
     @Transactional
     public void harvestPlot(Long idxUser, Long plotId) {
@@ -85,9 +95,9 @@ public class FarmCultivationService {
 
         crop.harvest();  // ready 아니면 예외
 
-        int amount = 1;  // TODO: 풍년 이벤트면 +1 (이벤트 도메인 연동)
+        // 풍년 이벤트: 수확량 +1
+        int amount = "harvest_bonus".equals(todayEventKey(idxUser)) ? 2 : 1;
 
-        // 작물 인벤토리 적립 (있으면 +, 없으면 신규)
         cropInvRepository.findByIdxFarmAndIdxSeed(farm.getIdxFarm(), crop.getIdxSeed())
                 .ifPresentOrElse(
                         ci -> ci.add(amount),
@@ -127,7 +137,6 @@ public class FarmCultivationService {
                 .toList();
         if (invs.isEmpty()) return List.of();
 
-        // 씨앗 이름·물주기수 한 번에 (N+1 방지)
         List<Long> seedIds = invs.stream().map(TbSeedInv::getIdxSeed).distinct().toList();
         Map<Long, TbSeed> seedById = seedRepository.findByIdxSeedIn(seedIds).stream()
                 .collect(Collectors.toMap(TbSeed::getIdxSeed, s -> s));
@@ -142,7 +151,7 @@ public class FarmCultivationService {
                     .build();
         }).toList();
     }
-    
+
     /**
      * 보유 수확 작물 목록 (인벤토리 화면).
      */
@@ -156,7 +165,6 @@ public class FarmCultivationService {
                 .toList();
         if (invs.isEmpty()) return List.of();
 
-        // 작물 이름·코드 한 번에 (N+1 방지)
         List<Long> seedIds = invs.stream().map(TbCropInv::getIdxSeed).distinct().toList();
         Map<Long, TbSeed> seedById = seedRepository.findByIdxSeedIn(seedIds).stream()
                 .collect(Collectors.toMap(TbSeed::getIdxSeed, s -> s));
@@ -174,13 +182,17 @@ public class FarmCultivationService {
 
     // ── 공통: 서버 권위 검증 ──
 
-    /** 내 농장 조회 (없으면 예외 — getFarm을 먼저 호출했다는 전제) */
+    /** 오늘 이벤트 key (없으면 normal). 보너스 효과 판정용. */
+    private String todayEventKey(Long idxUser) {
+        TbFarmEvent e = farmEventService.getTodayEvent(idxUser);
+        return (e == null) ? "normal" : e.getEventKey();
+    }
+
     private TbFarm getMyFarm(Long idxUser) {
         return farmRepository.findByIdxUser(idxUser)
                 .orElseThrow(() -> CustomException.notFound("농장을 찾을 수 없습니다."));
     }
 
-    /** 이 밭이 정말 내 농장 밭인지 검증 (핵심 방어: 남의 밭 plotId 조작 차단) */
     private TbPlot getMyPlot(TbFarm farm, Long plotId) {
         TbPlot plot = plotRepository.findById(plotId)
                 .orElseThrow(() -> CustomException.notFound("밭을 찾을 수 없습니다."));

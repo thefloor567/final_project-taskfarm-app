@@ -41,4 +41,20 @@ public class TbDailyBuy {
     public enum ItemType { SEED, TOOL, PLOT }   // PLOT 추가 (농장확장: 밭 구매도 하루한도 관리)
 
     // ✏️ TODO: increase()
+    /** 하루 구매 기록 생성 (qty 만큼) */
+    public static TbDailyBuy of(Long idxFarm, ItemType itemType, Long itemIdx,
+                                java.time.LocalDate date, int qty) {
+        TbDailyBuy d = new TbDailyBuy();
+        d.idxFarm = idxFarm;
+        d.itemType = itemType;
+        d.itemIdx = itemIdx;
+        d.buyDate = date;
+        d.cnt = Math.max(1, qty);
+        return d;
+    }
+
+    /** 같은 날 추가 구매 (qty 만큼 누적) */
+    public void increase(int qty) {
+        this.cnt += Math.max(1, qty);
+    }
 }

@@ -23,6 +23,7 @@ public class SeedShopService {
     private final TbSeedRepository seedRepository;
     private final TbSeedInvRepository seedInvRepository;
     private final TbCoinLedgerRepository coinLedgerRepository;
+    private final DailyBuyService dailyBuyService;
 
     /** 상점 진열 목록 (판매중인 씨앗) */
     @Transactional(readOnly = true)
@@ -66,5 +67,9 @@ public class SeedShopService {
                         () -> seedInvRepository.save(
                                 TbSeedInv.create(farm.getIdxFarm(), seedId, qty))
                 );
+        
+        // ⑤ 하루한도 검증 + 기록 (SEED)
+        dailyBuyService.checkAndRecord(
+                farm.getIdxFarm(), TbDailyBuy.ItemType.SEED, seedId, qty, seed.getDailyLimit());
     }
 }

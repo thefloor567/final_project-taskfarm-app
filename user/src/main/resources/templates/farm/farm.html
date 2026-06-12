@@ -33,7 +33,7 @@
                 <div class="fs-9 text-gray-500">작물</div>
               </div>
               <div style="width:1px;height:40px;background:#eee;"></div>
-              <!-- 시드스트릭: 연속 완료일. 높을수록 좋은 이벤트 확률↑ (설계서 1번) -->
+              <!-- 시드스트릭: 연속 완료일. 높을수록 좋은 이벤트 확률↑ -->
               <div class="text-center">
                 <div style="font-size:24px;">🔥</div>
                 <div class="fw-bold fs-5 text-gray-900" id="streak">0</div>
@@ -55,7 +55,7 @@
           </div>
         </div>
 
-        <!-- 바로가기 (씨앗/도구/밭/인벤토리/주문) -->
+        <!-- 바로가기 -->
         <div class="row g-2">
           <div class="col">
             <div class="card shadow-sm h-100" style="cursor:pointer;" onclick="location.href='/farm/shop/seeds'">
@@ -115,45 +115,28 @@
   <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
   <script th:src="@{/js/scripts.bundle.js}"></script>
   <script>
-    // ✅ 서버 권위. 모든 상태는 GET /api/farm 응답으로 채운다. (프론트 더미 금지)
-    //
-    // 🚧 확장 필드 (설계서 반영 — 백엔드 챗에 전달):
-    //   data.streak               : 연속 완료일 (tbUser.Streak)
-    //   data.plots[].effects      : 그 밭에 설치된 도구 효과 (tbPlotEffect)
-    //                               예: [{ type:'scarecrow', remainUses:3 }, { type:'greenhouse' }]
-    //   data.plots[].threat       : 그 밭이 오늘 노려진 위협 (tbEventTarget)
-    //                               예: { type:'crow', defended:true }  (defended=IsDefended)
+    // ✅ 서버 권위. 모든 상태는 GET /api/farm 응답으로 채운다.
     let farm = { drops: 0, coin: 0, cropCount: 0, streak: 0 };
     let plots = [];
     let event = null;
 
-    // 작물 이름이 없을 때 상태별 폴백 이모지
     const STATUS_EMOJI = { growing: '🌱', ready: '🍅', withered: '🥀' };
-    // 밭에 붙은 도구 효과 뱃지 (tbPlotEffect)
+    const CROP_EMOJI = { radish: '🥗', tomato: '🍅', corn: '🌽', pumpkin: '🎃', carrot: '🥕', strawberry: '🍓' };
     const EFFECT_BADGE = {
       scarecrow:  { emoji: '🧑\u200d🌾', label: '허수아비' },
       greenhouse: { emoji: '🏡',         label: '온실' },
       fertilizer: { emoji: '💩',         label: '비료' }
     };
-    // 위협 이벤트 뱃지 (tbEventTarget)
-    const THREAT_BADGE = {
-      crow:    '🐦‍⬛',
-      drought: '☀️',
-      storm:   '🌪️',
-      pest:    '🐛'
-    };
+    const THREAT_BADGE = { crow: '🐦‍⬛', drought: '☀️', storm: '🌪️', pest: '🐛' };
 
-    document.addEventListener('DOMContentLoaded', function () {
-      loadFarm();
-    });
+    document.addEventListener('DOMContentLoaded', function () { loadFarm(); });
 
-    // 농장 전체 스냅샷 한 번에 로드 → 화면 전체 렌더
     async function loadFarm() {
       try {
         const res = await fetch('/api/farm', { headers: { 'Accept': 'application/json' } });
         if (!res.ok) throw new Error('농장 조회 실패: ' + res.status);
         const body = await res.json();
-        const data = body.data ?? body; // ApiResponse {result,message,data} 대응
+        const data = body.data ?? body;
 
         farm = {
           drops: data.drops ?? 0,
@@ -165,10 +148,11 @@
           plotId: p.plotId,
           status: p.status,
           cropName: p.cropName,
+          code: p.code,
           watered: p.watered ?? 0,
           total: p.total ?? 0,
-          effects: p.effects ?? [],   // tbPlotEffect: 밭별 설치 도구
-          threat: p.threat ?? null    // tbEventTarget: 오늘 이 밭이 노려진 위협
+          effects: p.effects ?? [],
+          threat: p.threat ?? null
         }));
         event = data.event ?? null;
 
@@ -199,8 +183,12 @@
       document.getElementById('eventBanner').classList.remove('d-none');
     }
     function dismissEvent() {
-      // 🚧 POST /api/farm/event/dismiss
       document.getElementById('eventBanner').classList.add('d-none');
+    }
+
+    function cropIcon(p, statusKey) {
+      if (p.code && CROP_EMOJI[p.code]) return CROP_EMOJI[p.code];
+      return STATUS_EMOJI[statusKey];
     }
 
     function renderPlots() {
@@ -211,34 +199,36 @@
         const col = document.createElement('div');
         col.className = 'col-4';
 
+        const name = p.cropName || '작물';
         let inner = '', bg = '#F5F8FA', action = '';
+
         if (p.status === 'empty') {
           inner = '<div style="font-size:32px;opacity:.3;">➕</div><div class="fs-9 text-gray-400">씨앗 심기</div>';
           action = `plantSeed(${p.plotId})`;
         } else if (p.status === 'growing') {
           inner = `<div style="font-size:36px;">${STATUS_EMOJI.growing}</div>
+                     <div class="fs-8 fw-semibold text-gray-700">${name}</div>
                      <div class="fs-9 text-gray-500">💧 ${p.watered}/${p.total}</div>`;
           bg = '#E8FFF3'; action = `waterPlot(${p.plotId})`;
         } else if (p.status === 'ready') {
-          inner = `<div style="font-size:36px;">${STATUS_EMOJI.ready}</div>
+          inner = `<div style="font-size:36px;">${cropIcon(p, 'ready')}</div>
+                     <div class="fs-8 fw-semibold text-gray-700">${name}</div>
                      <div class="fs-9 fw-bold text-success">수확 가능!</div>`;
           bg = '#FFF8DD'; action = `harvestPlot(${p.plotId})`;
         } else if (p.status === 'withered') {
           inner = `<div style="font-size:36px;">${STATUS_EMOJI.withered}</div>
+                     <div class="fs-8 fw-semibold text-gray-500">${name}</div>
                      <div class="fs-9 text-danger">시듦</div>`;
           bg = '#FFF5F8'; action = `removeCrop(${p.plotId})`;
         }
 
-        // 밭별 도구 효과 뱃지 (tbPlotEffect) — 카드 좌상단
         const effectBadges = (p.effects || []).map(e => {
           const b = EFFECT_BADGE[e.type];
           if (!b) return '';
           const uses = e.remainUses != null ? ` ${e.remainUses}` : '';
-          return `<span class="badge badge-sm badge-light-primary"
-                        title="${b.label}">${b.emoji}${uses}</span>`;
+          return `<span class="badge badge-sm badge-light-primary" title="${b.label}">${b.emoji}${uses}</span>`;
         }).join('');
 
-        // 오늘 이 밭이 노려진 위협 (tbEventTarget) — 방어되면 초록, 아니면 빨강 테두리
         let threatTag = '', threatBorder = '';
         if (p.threat) {
           const temoji = THREAT_BADGE[p.threat.type] || '⚠️';
@@ -252,22 +242,17 @@
         }
 
         col.innerHTML = `
-            <div class="card shadow-sm position-relative" style="cursor:pointer;background:${bg};${threatBorder}"
+            <div class="card shadow-sm position-relative" style="cursor:pointer;background:${bg};${threatBorder};min-height:130px;"
                  onclick="${action}">
                 ${effectBadges ? `<div class="position-absolute top-0 start-0 m-1 d-flex gap-1">${effectBadges}</div>` : ''}
                 ${threatTag ? `<div class="position-absolute top-0 end-0 m-1">${threatTag}</div>` : ''}
-                <div class="card-body text-center py-4 px-1">${inner}</div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-3 px-1">${inner}</div>
             </div>
         `;
         grid.appendChild(col);
       });
     }
 
-    // === 밭 상호작용 ===
-    // ⚠️ 서버 권위: 클라이언트는 상태를 직접 바꾸지 않는다.
-    //    각 API 호출 성공 → loadFarm()으로 서버 최신 상태를 다시 받아 렌더.
-
-    // 공통: POST/DELETE 요청 → 성공 시 loadFarm(), 실패 시 서버 메시지 표시
     async function farmAction(url, method = 'POST', body = null) {
       try {
         const opt = { method, headers: { 'Accept': 'application/json' } };
@@ -291,9 +276,7 @@
       }
     }
 
-    // 씨앗 심기: 보유 씨앗 목록을 받아 고르게 한 뒤 심기
     async function plantSeed(plotId) {
-      // 1) 보유 씨앗 조회
       let seeds = [];
       try {
         const res = await fetch('/api/farm/inventory/seeds', { headers: { 'Accept': 'application/json' } });
@@ -311,9 +294,6 @@
           customClass: { confirmButton: 'btn btn-primary' } });
       }
 
-      // 2) 고르기 (Select2 — 테마 plugins.bundle에 포함)
-      //    ⚠️ Swal 모달 안에서 Select2를 쓰려면 dropdownParent를 모달 컨테이너로 잡아야
-      //       드롭다운이 모달 뒤로 숨지 않는다.
       const optionsHtml = seeds.map(s =>
         `<option value="${s.seedId}">${s.name} (물 ${s.waters}회 · 보유 ${s.qty})</option>`
       ).join('');
@@ -327,25 +307,20 @@
         buttonsStyling: false,
         customClass: { confirmButton: 'btn btn-primary', cancelButton: 'btn btn-light' },
         didOpen: () => {
-          // Select2 초기화 (jQuery는 plugins.bundle에 포함)
           $('#seedSelect').select2({
             placeholder: '씨앗 선택',
-            dropdownParent: $('.swal2-popup'),   // ← 모달 안에 드롭다운 렌더
-            minimumResultsForSearch: Infinity     // 항목 적으니 검색창 숨김(원하면 제거)
+            dropdownParent: $('.swal2-popup'),
+            minimumResultsForSearch: Infinity
           });
         },
         preConfirm: () => {
           const v = $('#seedSelect').val();
-          if (!v) {
-            Swal.showValidationMessage('씨앗을 골라주세요.');
-            return false;
-          }
+          if (!v) { Swal.showValidationMessage('씨앗을 골라주세요.'); return false; }
           return v;
         }
       });
       if (!seedId) return;
 
-      // 3) 심기 요청
       const ok = await farmAction(`/api/farm/plots/${plotId}/plant`, 'POST', { seedId: Number(seedId) });
       if (ok) loadFarm();
     }
@@ -369,7 +344,6 @@
       const ok = await farmAction(`/api/farm/plots/${plotId}/crop`, 'DELETE');
       if (ok) loadFarm();
     }
-
   </script>
 </body>
 
