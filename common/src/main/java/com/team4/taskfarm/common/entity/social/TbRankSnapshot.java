@@ -28,43 +28,18 @@ public class TbRankSnapshot extends BaseEntity {
     @Column(name = "Period", nullable = false, length = 10)
     private String period;   // 예: "2026W24"
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "Scope", nullable = false)
-    private Scope scope = Scope.all;
-
-    @Column(name = "ScopeRefId")
-    private Long scopeRefId;   // 길드면 guildId, 전체면 NULL
-
     @Column(name = "Idx_User", nullable = false)
     private Long idxUser;
 
     @Column(name = "Ranking", nullable = false)
-    private int ranking;       // 확정 순위 (컬럼 Ranking)
+    private int ranking;
 
     @Column(name = "WeeklyExp", nullable = false)
     private int weeklyExp = 0;
 
-    public enum Scope { all, guild }
-
-    /** 전체 랭킹 스냅샷 1행 생성. */
-    public static TbRankSnapshot ofAll(String period, Long idxUser, int ranking, int weeklyExp) {
+    public static TbRankSnapshot of(String period, Long idxUser, int ranking, int weeklyExp) {
         TbRankSnapshot s = new TbRankSnapshot();
         s.period = period;
-        s.scope = Scope.all;
-        s.scopeRefId = null;
-        s.idxUser = idxUser;
-        s.ranking = ranking;
-        s.weeklyExp = weeklyExp;
-        return s;
-    }
-
-    /** 길드 랭킹 스냅샷 1행 생성. */
-    public static TbRankSnapshot ofGuild(String period, Long guildId,
-                                         Long idxUser, int ranking, int weeklyExp) {
-        TbRankSnapshot s = new TbRankSnapshot();
-        s.period = period;
-        s.scope = Scope.guild;
-        s.scopeRefId = guildId;
         s.idxUser = idxUser;
         s.ranking = ranking;
         s.weeklyExp = weeklyExp;
