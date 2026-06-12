@@ -15,7 +15,7 @@ public class RankingScheduler {
 
     private final RankingService rankingService;
 
-    // 매주 일요일 23:59에 주간 랭킹 스냅샷 저장
+    // 매주 일요일 23:59에 주간 랭킹 스냅샷 저장 0 * * * * *  0 59 23 * * SUN
     @Scheduled(cron = "0 59 23 * * SUN", zone = "Asia/Seoul")
     public void saveWeeklyRankSnapshot() {
         log.info("주간 랭킹 스냅샷 저장 시작");
