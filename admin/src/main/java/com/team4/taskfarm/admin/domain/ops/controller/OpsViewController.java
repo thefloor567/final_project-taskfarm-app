@@ -15,4 +15,10 @@ public class OpsViewController extends AdminBaseController {
     public String rankAudit() {
         return "rank/rank";
     }
+
+    // 실제 URL: /admin/mails
+    @GetMapping("/mails")
+    public String mailSend() {
+        return "mail/mail";
+    }
 }
