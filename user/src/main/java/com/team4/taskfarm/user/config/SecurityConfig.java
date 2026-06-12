@@ -51,7 +51,8 @@ public class SecurityConfig {
                     "/category",
                     "/farm/**",
                     "/stats/**",
-                    "/mypage"
+                    "/mypage",
+                    "/mails"
                 ).permitAll()
 
                 // 정적 리소스 허용
