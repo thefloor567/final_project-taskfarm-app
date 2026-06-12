@@ -1,23 +1,30 @@
 package com.team4.taskfarm.user.domain.auth.service;
 
+import java.security.SecureRandom;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team4.taskfarm.common.config.JwtService;
 import com.team4.taskfarm.common.config.TokenBlacklist;
+import com.team4.taskfarm.common.entity.user.TbUser;
 import com.team4.taskfarm.common.exception.CustomException;
 import com.team4.taskfarm.user.domain.auth.dto.LoginRequest;
 import com.team4.taskfarm.user.domain.auth.dto.LoginResponse;
 import com.team4.taskfarm.user.domain.auth.dto.SignupRequest;
 import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
-import com.team4.taskfarm.common.entity.user.TbUser;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    private static final String FRIEND_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final int FRIEND_CODE_LENGTH = 8;
+    private static final int FRIEND_CODE_RETRY_COUNT = 10;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final AuthUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -35,6 +42,8 @@ public class AuthService {
             passwordEncoder.encode(req.getPassword()),
             req.getNickname()
         );
+
+        user.assignFriendCode(generateUniqueFriendCode());
 
         userRepository.save(user);
     }
@@ -62,11 +71,32 @@ public class AuthService {
             .token(token)
             .build();
     }
-    
+
     public void logout(String token) {
         if (token == null) return;
         tokenBlacklist.blacklist(token, jwtService.getExpiresAt(token));
     }
 
-    
+    private String generateUniqueFriendCode() {
+        for (int i = 0; i < FRIEND_CODE_RETRY_COUNT; i++) {
+            String code = generateFriendCode();
+
+            if (userRepository.findByFriendCode(code).isEmpty()) {
+                return code;
+            }
+        }
+
+        throw CustomException.badRequest("친구코드 생성에 실패했습니다. 다시 시도해주세요.");
+    }
+
+    private String generateFriendCode() {
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < FRIEND_CODE_LENGTH; i++) {
+            int index = RANDOM.nextInt(FRIEND_CODE_CHARS.length());
+            sb.append(FRIEND_CODE_CHARS.charAt(index));
+        }
+
+        return sb.toString();
+    }
 }
