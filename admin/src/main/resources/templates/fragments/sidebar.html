@@ -59,6 +59,16 @@
               class="path3"></span><span class="path4"></span></i>
           <span class="menu-label">업적 관리</span>
         </a>
+
+        <!-- 운영 그룹 -->
+        <div class="px-4 pt-4 pb-2">
+          <span class="menu-label fs-9 fw-bold text-uppercase" style="color:#565674;">운영</span>
+        </div>
+        <a th:href="@{/rank}" class="admin-menu-item" th:classappend="${active == 'rankAudit'} ? 'active'">
+          <i class="ki-duotone ki-medal-star fs-3"><span class="path1"></span><span class="path2"></span><span
+              class="path3"></span><span class="path4"></span></i>
+          <span class="menu-label">랭킹 감사</span>
+        </a>
       </div>
 
       <!-- 로그아웃 -->

@@ -21,14 +21,7 @@
               <label class="form-label fw-semibold text-gray-700">주차 (Period)</label>
               <input type="text" id="period" class="form-control" placeholder="예: 2026W24">
             </div>
-            <div class="col-sm-4">
-              <label class="form-label fw-semibold text-gray-700">범위</label>
-              <select id="scope" class="form-select">
-                <option value="all">전체</option>
-                <option value="guild">길드</option>
-              </select>
-            </div>
-            <div class="col-sm-4">
+            <div class="col-sm-8">
               <button class="btn btn-primary w-100" onclick="loadSnapshot()">조회</button>
             </div>
           </div>
@@ -87,13 +80,12 @@
 
     function loadSnapshot() {
       const period = document.getElementById('period').value.trim();
-      const scope = document.getElementById('scope').value;
       if (!period) return warn('주차(Period)를 입력해주세요. 예: 2026W24');
 
       const body = document.getElementById('rankBody');
       body.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-5">불러오는 중…</td></tr>';
 
-      fetch(`/admin/api/ops/rank/snapshots?period=${encodeURIComponent(period)}&scope=${scope}`)
+      fetch(`/admin/api/ops/rank/snapshots?period=${encodeURIComponent(period)}`)
         .then(res => res.json())
         .then(res => render(res.data || [], period))
         .catch(() => {
