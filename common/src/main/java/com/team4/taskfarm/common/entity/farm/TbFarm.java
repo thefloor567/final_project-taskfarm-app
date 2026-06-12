@@ -32,8 +32,8 @@ public class TbFarm extends BaseEntity {
     @Column(name = "Coin", nullable = false)
     private int coin = 0;
 
-    @Column(name = "ScarecrowLeft", nullable = false)
-    private int scarecrowLeft = 0;
+    //@Column(name = "ScarecrowLeft", nullable = false)
+    //private int scarecrowLeft = 0;
 
     // ✏️ TODO: addDrops/spendCoin 등
     
@@ -44,7 +44,7 @@ public class TbFarm extends BaseEntity {
         f.name = "내 농장";
         f.drops = 0;
         f.coin = 0;
-        f.scarecrowLeft = 0;
+        //f.scarecrowLeft = 0;
         return f;
     }
     
@@ -76,18 +76,18 @@ public class TbFarm extends BaseEntity {
     }
     
     /** 허수아비 방어 1회 소모. 남아있으면 true(방어 성공). */
-    public boolean useScarecrow() {
-        if (scarecrowLeft > 0) {
-            scarecrowLeft--;
-            return true;
-        }
-        return false;
-    }
+    //public boolean useScarecrow() {
+    //    if (scarecrowLeft > 0) {
+    //        scarecrowLeft--;
+    //        return true;
+    //    }
+    //    return false;
+    //}
     
     /** 허수아비 비축(구매). */
-    public void addScarecrow(int count) {
-        if (count > 0) scarecrowLeft += count;
-    }
+    //public void addScarecrow(int count) {
+    //    if (count > 0) scarecrowLeft += count;
+    //}
     
     /** 물방울 적립 (할일 완료 / 레벨업 보너스). */
     public void addDrops(int amount) {

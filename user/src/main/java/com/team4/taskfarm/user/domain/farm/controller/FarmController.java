@@ -31,6 +31,12 @@ public class FarmController extends UserBaseController {
         // if (!isLoggedIn()) return "redirect:/auth/login";
         return "farm/tool-shop";
     }
+    
+    // 밭 상점
+    @GetMapping("/farm/shop/plots")
+    public String plotShop() {
+    	return "farm/plot-shop";
+    }
 
     // 인벤토리 (보유 씨앗 / 수확 작물)
     @GetMapping("/farm/inventory")
@@ -45,4 +51,5 @@ public class FarmController extends UserBaseController {
         // if (!isLoggedIn()) return "redirect:/auth/login";
         return "farm/orders";
     }
+
 }
