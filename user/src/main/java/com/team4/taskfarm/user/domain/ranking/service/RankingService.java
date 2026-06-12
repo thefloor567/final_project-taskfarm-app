@@ -4,7 +4,10 @@ import java.time.LocalDate;
 import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
@@ -96,7 +99,6 @@ public class RankingService {
 	}
 	
 	// 랭킹 화면 전체 데이터를 만드는 메서드
-	@Transactional(readOnly = true)
 	public RankPageResponse getRankPage(String type, String scope, Long currentUserId) {
 
 	    // 아직 친구 랭킹은 구현 전이므로 일단 막아둔다.
@@ -111,7 +113,7 @@ public class RankingService {
 	        default -> TOTAL_ALL_KEY;
 	    };
 
-	    List<RankItemResponse> top = getTopRankItems(key, 100);
+	    List<RankItemResponse> top = getTopRankItems(key, 10);
 	    RankItemResponse me = getMyRankItem(key, currentUserId);
 
 	    return new RankPageResponse(top, me);
@@ -120,20 +122,31 @@ public class RankingService {
 	
 	// TOP N 랭킹 조회 => Redis ZSET에서 score 높은 순서로 가져온 뒤 social.html이 원하는 필드명에 맞춰 RankItemResponse로 변환한다.
 	private List<RankItemResponse> getTopRankItems(String key, int limit) {
-	    int safeLimit = limit <= 0 ? 100 : Math.min(limit, 100);
+	    int safeLimit = limit <= 0 ? 10 : Math.min(limit, 10);
 
-	    Set<ZSetOperations.TypedTuple<String>> tuples =
-	            redisTemplate.opsForZSet()
-	                    .reverseRangeWithScores(key, 0, safeLimit - 1);
+	    Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet().reverseRangeWithScores(key, 0, safeLimit - 1);
 
 	    List<RankItemResponse> result = new ArrayList<>();
 
 	    if (tuples == null || tuples.isEmpty()) {
 	        return result;
 	    }
+	    
+	    // 1. Redis member 값에서 userId만 먼저 전부 뽑는다.
+	    List<Long> userIds = tuples.stream()
+	            .map(ZSetOperations.TypedTuple::getValue)
+	            .filter(Objects::nonNull)
+	            .map(Long::valueOf)
+	            .toList();
 
+	    // 2. userId 목록으로 유저 정보를 한 번에 조회한다.
+	    Map<Long, TbUser> userMap = userRepository.findAllById(userIds)
+	            .stream()
+	            .collect(Collectors.toMap(TbUser::getIdxUser, user -> user));
+	    
 	    int rank = 1;
 
+	    // 3. 루프에서는 DB 조회하지 않고 Map에서 꺼내기만 한다.
 	    for (ZSetOperations.TypedTuple<String> tuple : tuples) {
 	        String member = tuple.getValue();
 	        Double score = tuple.getScore();
@@ -143,8 +156,7 @@ public class RankingService {
 	        }
 
 	        Long idxUser = Long.valueOf(member);
-
-	        TbUser user = userRepository.findById(idxUser).orElse(null);
+	        TbUser user = userMap.get(idxUser);
 
 	        result.add(new RankItemResponse(
 	                rank,
@@ -211,8 +223,8 @@ public class RankingService {
 	        return;
 	    }
 
-	    // Redis ZSET에서 주간 랭킹 전체 조회 => top 3만 저장
-	    Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet().reverseRangeWithScores(key, 0, 2);
+	    // Redis ZSET에서 주간 랭킹 전체 조회 => top 10만 저장
+	    Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet().reverseRangeWithScores(key, 0, 9);
 
 	    // 저장할 랭킹 데이터가 없으면 종료
 	    if (tuples == null || tuples.isEmpty()) {
