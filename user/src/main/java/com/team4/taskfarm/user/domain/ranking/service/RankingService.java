@@ -235,7 +235,7 @@ public class RankingService {
 	        int weeklyExp = score.intValue();
 
 	        // tbRankSnapshot 한 행 생성
-	        TbRankSnapshot snapshot = TbRankSnapshot.ofAll(period, idxUser, ranking, weeklyExp);
+	        TbRankSnapshot snapshot = TbRankSnapshot.of(period, idxUser, ranking, weeklyExp);
 
 	        snapshots.add(snapshot);
 	        ranking++;
