@@ -50,4 +50,7 @@ public interface MailRepository extends JpaRepository<TbMail, Long> {
             @Param("idxUser") Long idxUser,
             @Param("claimDate") LocalDateTime claimDate
     );
+    
+    // 멱등 발송용: 같은 보상(refKey)을 이 유저에게 이미 보냈는지
+    boolean existsByRefKeyAndIdxUser(String refKey, Long idxUser);
 }

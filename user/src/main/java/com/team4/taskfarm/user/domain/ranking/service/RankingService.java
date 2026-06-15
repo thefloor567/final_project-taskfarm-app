@@ -20,6 +20,7 @@ import com.team4.taskfarm.common.entity.social.TbFriend;
 import com.team4.taskfarm.common.entity.social.TbFriend.Status;
 import com.team4.taskfarm.common.entity.social.TbRankSnapshot;
 import com.team4.taskfarm.common.entity.user.TbUser;
+import com.team4.taskfarm.user.domain.achievement.service.AchievementService;
 import com.team4.taskfarm.user.domain.friend.repository.FriendRepository;
 import com.team4.taskfarm.user.domain.ranking.dto.RankItemResponse;
 import com.team4.taskfarm.user.domain.ranking.dto.RankPageResponse;
@@ -57,6 +58,7 @@ public class RankingService {
 	
 	// 주간 전체 랭킹 TOP 3 코인 보상 지급용 서비스
 	private final WeeklyRankRewardService weeklyRankRewardService;
+	private final AchievementService achievementService;
 	
 	// 누적 랭킹 점수 갱신 => total 랭킹은 tbUser.Exp 기준이어야 함
 	public void updateTotalScore(Long idxUser, int totalExp) {
@@ -274,19 +276,30 @@ public class RankingService {
 	    // 저장된 스냅샷 중 TOP 3에게만 보상 지급 => 4등이면 보상 X
 	    for (TbRankSnapshot snapshot : savedSnapshots) {
 	        int rewardCoin = getWeeklyRankRewardCoin(snapshot.getRanking());
-	        
+
 	        if (rewardCoin <= 0 || snapshot.getWeeklyExp() < WEEKLY_RANK_REWARD_MIN_EXP) {
 	            continue;
 	        }
-	        
-	        // 실제 코인 보상 지급
+
+	        // 코인 보상 → 우편 발송 (유저가 나중에 claim)
+	        // 시그니처에서 rankSnapshotId 제거: 우편 멱등은 refKey(period:ranking)로 처리
 	        weeklyRankRewardService.grantWeeklyRankReward(
 	                snapshot.getIdxUser(),
 	                rewardCoin,
 	                period,
-	                snapshot.getRanking(),
-	                snapshot.getIdxRankSnapshot()
+	                snapshot.getRanking()
 	        );
+
+	        // 1등에게만 칭호 → 업적 시스템으로 (rank_1st 업적 달성 처리)
+	        if (snapshot.getRanking() == 1) {
+	            try {
+	                achievementService.checkAndGrant(snapshot.getIdxUser(), "weekly_rank");
+	            } catch (Exception e) {
+	                // 업적은 부가 — 실패해도 랭킹 확정/코인 보상은 진행
+	                log.warn("주간 1위 칭호 업적 처리 실패 - idxUser={}, reason={}",
+	                        snapshot.getIdxUser(), e.getMessage());
+	            }
+	        }
 	    }
 	    
 	    log.info("주간 랭킹 스냅샷 저장 완료 - period={}, count={}", period, snapshots.size());
@@ -372,12 +385,12 @@ public class RankingService {
 	            .toList();
 	}
 	
-	// 주간 전체 랭킹 보상 코인 계싼
+	// 주간 전체 랭킹 보상 코인 계산
 	private int getWeeklyRankRewardCoin(int ranking) {
 	    return switch (ranking) {
-	        case 1 -> 1000;
-	        case 2 -> 500;
-	        case 3 -> 100;
+	        case 1 -> 3000;
+	        case 2 -> 1500;
+	        case 3 -> 800;
 	        default -> 0;
 	    };
 	}

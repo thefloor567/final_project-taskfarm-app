@@ -9,6 +9,7 @@ import com.team4.taskfarm.common.entity.social.TbFriend;
 import com.team4.taskfarm.common.entity.social.TbFriend.Status;
 import com.team4.taskfarm.common.entity.user.TbUser;
 import com.team4.taskfarm.common.exception.CustomException;
+import com.team4.taskfarm.user.domain.achievement.service.AchievementService;
 import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
 import com.team4.taskfarm.user.domain.friend.dto.FriendPageResponseDto;
 import com.team4.taskfarm.user.domain.friend.dto.FriendRequestDto;
@@ -16,13 +17,16 @@ import com.team4.taskfarm.user.domain.friend.dto.FriendResponseDto;
 import com.team4.taskfarm.user.domain.friend.repository.FriendRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FriendService {
 
     private final FriendRepository friendRepository;
     private final AuthUserRepository authUserRepository;
+    private final AchievementService achievementService;
 
     @Transactional(readOnly = true)
     public FriendPageResponseDto getFriendPage(Long idxUser) {
@@ -86,6 +90,16 @@ public class FriendService {
 
             if (!existing.getRequestedBy().equals(idxUser)) {
                 existing.accept();
+
+                // 자동 맞수락도 친구 성사 → 업적 체크 (양쪽)
+                Long opponent = existing.opponentOf(idxUser);
+                try {
+                    achievementService.checkAndGrant(idxUser, "friend_count");
+                    achievementService.checkAndGrant(opponent, "friend_count");
+                } catch (Exception e) {
+                    log.warn("친구 업적 체크 실패(무시) - {}", e.getMessage());
+                }
+
                 return toResponse(existing, idxUser);
             }
 
@@ -112,6 +126,15 @@ public class FriendService {
         }
 
         friend.accept();
+
+        Long me = idxUser;
+        Long opponent = friend.opponentOf(idxUser);
+        try {
+            achievementService.checkAndGrant(me, "friend_count");
+            achievementService.checkAndGrant(opponent, "friend_count");
+        } catch (Exception e) {
+            log.warn("친구 업적 체크 실패(무시) - {}", e.getMessage());
+        }
 
         return toResponse(friend, idxUser);
     }

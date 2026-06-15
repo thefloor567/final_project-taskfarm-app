@@ -9,4 +9,8 @@ import com.team4.taskfarm.common.entity.todo.TbTodo;
 public interface TodoRepository extends JpaRepository<TbTodo, Long>, TodoRepositoryCustom{
 
 	Optional<TbTodo> findByIdxUserAndIdxTodoAndDeleteDateIsNull(Long idxUser, Long idxTodo);
+	
+	// 업적 집계용
+	long countByIdxUserAndIsDoneTrueAndDeleteDateIsNull(Long idxUser);
+	long countByIdxUserAndPriorityAndIsDoneTrueAndDeleteDateIsNull(Long idxUser, TbTodo.Priority priority);
 }

@@ -48,11 +48,12 @@ public class SecurityConfig {
                     "/signup",
                     "/home",
                     "/todo/**",
-                    "/category",
+                    "/category/**",
                     "/farm/**",
                     "/stats/**",
-                    "/mypage",
-                    "/mails"
+                    "/mypage/**",
+                    "/mails/**",
+                    "/achievements/**"
                 ).permitAll()
 
                 // 정적 리소스 허용

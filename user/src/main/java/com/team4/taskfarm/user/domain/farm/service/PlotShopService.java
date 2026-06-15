@@ -3,10 +3,13 @@ package com.team4.taskfarm.user.domain.farm.service;
 import com.team4.taskfarm.common.entity.farm.*;
 import com.team4.taskfarm.common.entity.user.TbUser;
 import com.team4.taskfarm.common.exception.CustomException;
+import com.team4.taskfarm.user.domain.achievement.service.AchievementService;
 import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
 import com.team4.taskfarm.user.domain.farm.dto.PlotShopItemResponse;
 import com.team4.taskfarm.user.domain.farm.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +25,8 @@ import java.util.stream.Collectors;
  * 구매는 tbPlot row insert 만으로 끝난다(테이블 스키마 변경 X).
  * getFarm 은 tbPlot row 수로 밭을 합산하므로 자동 반영.
  */
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PlotShopService {
@@ -33,6 +38,7 @@ public class PlotShopService {
     private final TbCoinLedgerRepository coinLedgerRepository;
     private final TbDailyBuyRepository dailyBuyRepository;
     private final DailyBuyService dailyBuyService;
+    private final AchievementService achievementService;
 
     /** 밭 상점 진열 (보유/잠김 표시) */
     @Transactional(readOnly = true)
@@ -86,6 +92,12 @@ public class PlotShopService {
         // 밭은 한도 검증 불필요(보유검증으로 막힘) → limit 0 으로 기록만
         dailyBuyService.checkAndRecord(
                 farm.getIdxFarm(), TbDailyBuy.ItemType.PLOT, (long) slot, 1, 0);
+        
+        try {
+            achievementService.checkAndGrant(idxUser, "plot_owned");
+        } catch (Exception e) {
+            log.warn("밭구매 업적 체크 실패(무시) - {}", e.getMessage());
+        }
     }
 
     // ── 공통 ──

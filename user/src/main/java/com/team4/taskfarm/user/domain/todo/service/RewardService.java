@@ -14,6 +14,7 @@ import com.team4.taskfarm.common.entity.farm.TbFarm;
 import com.team4.taskfarm.common.entity.todo.TbTodo;
 import com.team4.taskfarm.common.entity.user.TbUser;
 import com.team4.taskfarm.common.exception.CustomException;
+import com.team4.taskfarm.user.domain.achievement.service.AchievementService;
 import com.team4.taskfarm.user.domain.ai.repository.AiLogRepository;
 import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
 import com.team4.taskfarm.user.domain.farm.repository.TbFarmRepository;
@@ -22,7 +23,9 @@ import com.team4.taskfarm.user.domain.todo.repository.TbExpLedgerRepository;
 import com.team4.taskfarm.user.domain.todo.repository.TbExpPolicyRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RewardService {
@@ -31,8 +34,9 @@ public class RewardService {
     private final TbFarmRepository farmRepository;
     private final TbExpPolicyRepository expPolicyRepository;
     private final TbExpLedgerRepository expLedgerRepository;
-    private final AiLogRepository aiLogRepository;          // ← 추가 (AI값 조회)
+    private final AiLogRepository aiLogRepository;
     private final RankingService rankingService;
+    private final AchievementService achievementService;
 
     // 레벨디자인 ③ 클램프 범위 (TbExpPolicy에 없으므로 코드 상수)
     private static final Map<TbTodo.Priority, int[]> CLAMP = Map.of(
@@ -79,6 +83,28 @@ public class RewardService {
             if (levelsGained > 0 && policy.getLevelUpDrops() > 0) {
                 farm.addDrops(policy.getLevelUpDrops() * levelsGained);
             }
+        }
+        
+        checkTodoAchievements(idxUser, priority);
+    }
+    
+    /** 할일 완료 관련 업적 체크 (본 기능 보호: 실패 무시). */
+    private void checkTodoAchievements(Long idxUser, TbTodo.Priority priority) {
+        safeGrant(idxUser, "todo_done_total");
+        if (priority == TbTodo.Priority.A) {
+            safeGrant(idxUser, "priorityA_done");
+        }
+        safeGrant(idxUser, "streak_days");   // tbUser.Streak 읽음 (이미 갱신된 값)
+        safeGrant(idxUser, "level_reach");   // tbUser.Level 읽음
+    }
+    
+    /** 업적 1건 안전 호출. REQUIRES_NEW(AchievementService) + 예외 무시. */
+    private void safeGrant(Long idxUser, String condType) {
+        try {
+            achievementService.checkAndGrant(idxUser, condType);
+        } catch (Exception e) {
+            log.warn("업적 체크 실패(무시) - user={}, cond={}, reason={}",
+                    idxUser, condType, e.getMessage());
         }
     }
 

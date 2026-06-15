@@ -32,6 +32,10 @@ public class TbFarm extends BaseEntity {
     @Column(name = "Coin", nullable = false)
     private int coin = 0;
 
+    // 업적 집계용 누적 수확량 (판매해도 안 줄어드는 평생 카운터)
+    @Column(name = "TotalHarvest", nullable = false)
+    private int totalHarvest = 0;
+
     //@Column(name = "ScarecrowLeft", nullable = false)
     //private int scarecrowLeft = 0;
 
@@ -92,6 +96,11 @@ public class TbFarm extends BaseEntity {
     /** 물방울 적립 (할일 완료 / 레벨업 보너스). */
     public void addDrops(int amount) {
         if (amount > 0) this.drops += amount;
+    }
+    
+    /** 누적 수확량 증가 (수확 시 호출). 업적 집계용. */
+    public void addHarvestCount(int amount) {
+        if (amount > 0) this.totalHarvest += amount;
     }
     
 }

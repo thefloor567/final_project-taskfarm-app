@@ -17,7 +17,7 @@
       <div class="card shadow-sm mb-4 border-0" style="background:#FFF8DD;">
         <div class="card-body py-3">
           <span class="fs-7 text-gray-700">
-            📮 보상은 <b>코인·칭호만</b> 가능합니다 (물방울 지급 불가 — 재화 원칙).
+            📮 보상은 <b>코인만</b> 가능합니다 (물방울 지급 불가 — 재화 원칙 / 칭호는 업적·랭킹으로만 획득).
             동일 <b>RefKey</b>로는 중복 발송되지 않아요(멱등). 점검보상 등은 RefKey를 꼭 지정하세요.
           </span>
         </div>
@@ -61,16 +61,11 @@
                   <select id="rewardType" class="form-select" onchange="onRewardChange()">
                     <option value="NONE">없음 (공지)</option>
                     <option value="COIN">코인</option>
-                    <option value="TITLE">칭호</option>
                   </select>
                 </div>
                 <div class="col-sm-7" id="rewardCoinWrap" style="display:none;">
                   <label class="form-label fw-semibold text-gray-700">코인</label>
                   <input type="number" id="rewardCoin" class="form-control" min="0" value="0">
-                </div>
-                <div class="col-sm-7" id="rewardTitleWrap" style="display:none;">
-                  <label class="form-label fw-semibold text-gray-700">칭호</label>
-                  <input type="text" id="rewardTitle" class="form-control" placeholder="예: 🎖️ 베타 테스터">
                 </div>
               </div>
 
@@ -108,9 +103,9 @@
     // 🚧 API (어드민 /admin/api):
     //   POST /admin/api/ops/mails/broadcast
     //     body:{ targetType:'ALL'|'USER', targetUserIds:[..], title, body,
-    //            rewardType:'NONE'|'COIN'|'TITLE', rewardCoin, rewardTitle, refKey }
+    //            rewardType:'NONE'|'COIN', rewardCoin, refKey }
     //     → tbMail에 대상 유저 수만큼 insert. RefKey uk로 멱등(재발송 시 중복 X).
-    //     ⚠️ 물방울 보상 불가. 보상은 코인/칭호만.
+    //     ⚠️ 보상은 코인만. 물방울·칭호 발송 불가 (칭호는 업적·랭킹 전용).
     //   GET  /admin/api/ops/mails/history?limit=20
     //     → data:[{ refKey, title, targetType, sentCount, rewardSummary, createDate }]
     function adminLogout() {
@@ -126,8 +121,7 @@
     }
     function onRewardChange() {
       const r = document.getElementById('rewardType').value;
-      document.getElementById('rewardCoinWrap').style.display  = r === 'COIN'  ? '' : 'none';
-      document.getElementById('rewardTitleWrap').style.display = r === 'TITLE' ? '' : 'none';
+      document.getElementById('rewardCoinWrap').style.display = r === 'COIN' ? '' : 'none';
     }
 
     function send() {
@@ -151,10 +145,6 @@
         payload.rewardCoin = parseInt(document.getElementById('rewardCoin').value) || 0;
         if (payload.rewardCoin < 0) return warn('코인은 0 이상이어야 합니다.');
       }
-      if (rewardType === 'TITLE') {
-        payload.rewardTitle = document.getElementById('rewardTitle').value.trim();
-        if (!payload.rewardTitle) return warn('칭호를 입력해주세요.');
-      }
 
       const targetText = targetType === 'ALL' ? '전체 유저' : `${targetUserIds.length}명`;
       Swal.fire({
@@ -177,7 +167,7 @@
     }
 
     function resetForm() {
-      ['title','body','targetUserIds','refKey','rewardTitle'].forEach(id => document.getElementById(id).value = '');
+      ['title','body','targetUserIds','refKey'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('rewardCoin').value = 0;
     }
 

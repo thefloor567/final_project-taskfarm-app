@@ -12,4 +12,6 @@ public interface TbOrderRepository extends JpaRepository<TbOrder, Long> {
 
     /** 농장의 전체 주문 (상태 무관, 슬롯 표시용) */
     List<TbOrder> findByIdxFarmOrderByIdxOrderAsc(Long idxFarm);
+    
+    long countByIdxFarmAndState(Long idxFarm, TbOrder.State state);
 }
