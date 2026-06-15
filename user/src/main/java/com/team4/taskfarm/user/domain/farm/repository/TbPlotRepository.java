@@ -9,4 +9,6 @@ public interface TbPlotRepository extends JpaRepository<TbPlot, Long> {
 
     /** 농장의 밭 슬롯 전체 (슬롯 순) */
     List<TbPlot> findByIdxFarmOrderBySlotAsc(Long idxFarm);
+    
+    long countByIdxFarm(Long idxFarm);
 }

@@ -2,12 +2,15 @@ package com.team4.taskfarm.user.domain.farm.service;
 
 import com.team4.taskfarm.common.entity.farm.*;
 import com.team4.taskfarm.common.entity.user.TbUser;
+import com.team4.taskfarm.user.domain.achievement.service.AchievementService;
 import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
 import com.team4.taskfarm.common.exception.CustomException;
 import com.team4.taskfarm.user.domain.farm.dto.OrderResponse;
 import com.team4.taskfarm.user.domain.farm.dto.OrderResponse.OrderItemDto;
 import com.team4.taskfarm.user.domain.farm.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +24,7 @@ import java.util.stream.Collectors;
  *  - 생성: 현재 레벨 해금작물 중 랜덤, 수량 3~6, 보상 = Reward × 수량 × 1.5
  *  - 이행: 작물 차감 → 코인 지급(EARN, 원장 기록) → DONE → 빈 슬롯 새 주문 교체
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -32,6 +36,7 @@ public class OrderService {
     private final TbCoinLedgerRepository coinLedgerRepository;
     private final TbOrderRepository orderRepository;
     private final TbOrderItemRepository orderItemRepository;
+    private final AchievementService achievementService;
 
     // ── 레벨디자인 상수 (표4 / 의사코드) ──
     private static final int ORDER_SLOTS = 3;          // 동시 주문 슬롯
@@ -102,6 +107,13 @@ public class OrderService {
 
         // ⑤ 빈 슬롯에 새 주문 교체
         generateOrder(farm.getIdxFarm(), currentLevel(idxUser));
+
+        // ⑥ 업적 체크 (본 기능 안 막게)
+        try {
+            achievementService.checkAndGrant(idxUser, "order_fulfill");
+        } catch (Exception e) {
+            log.warn("주문 업적 체크 실패(무시) - {}", e.getMessage());
+        }
     }
 
     // ── 내부 ──

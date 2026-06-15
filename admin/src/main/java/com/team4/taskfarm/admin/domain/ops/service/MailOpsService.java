@@ -59,15 +59,9 @@ public class MailOpsService {
     }
 
     private TbMail buildMail(MailBroadcastRequest req, Long userId, String title, String body, String refKey) {
-        // 보상은 코인·칭호만 (물방울 불가 — 재화 원칙)
+        // 보상은 코인
         return switch (req.getRewardType() == null ? "NONE" : req.getRewardType()) {
             case "COIN" -> TbMail.ofCoin(userId, title, body, req.getRewardCoin(), SOURCE_ADMIN, refKey);
-            case "TITLE" -> {
-                if (req.getRewardTitle() == null || req.getRewardTitle().isBlank()) {
-                    throw CustomException.badRequest("칭호 보상은 칭호명을 입력해주세요.");
-                }
-                yield TbMail.ofTitle(userId, title, body, req.getRewardTitle(), SOURCE_ADMIN, refKey);
-            }
             default -> TbMail.ofNotice(userId, title, body, SOURCE_ADMIN, refKey);
         };
     }

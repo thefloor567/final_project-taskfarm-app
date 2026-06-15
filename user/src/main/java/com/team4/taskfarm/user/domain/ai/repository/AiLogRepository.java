@@ -12,4 +12,6 @@ public interface AiLogRepository extends JpaRepository<TbAiLog, Long>{
 	Optional<TbAiLog> findTopByIdxUserAndIdxTodoOrderByCreateDateDesc(Long idxUser, Long idxTodo);
 	
 	List<TbAiLog> findByIdxUserOrderByCreateDateAsc(Long idxUser);
+	
+	long countByIdxUser(Long idxUser);
 }

@@ -1,28 +1,17 @@
 package com.team4.taskfarm.user.domain.farm.service;
 
 import com.team4.taskfarm.common.entity.farm.*;
+import com.team4.taskfarm.user.domain.achievement.service.AchievementService;
 import com.team4.taskfarm.user.domain.farm.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.*;
 
-/**
- * 위협 이벤트 처리. 스케줄러 없는 lazy + 즉시 타격. getFarm 에서 1회 호출.
- *
- * 흐름:
- *   1) 오늘 이벤트가 위협이고 아직 처리 안 됐으면(tbEventTarget 없음):
- *      - 위협별 대상 후보 선정 (작물 상태 필터 + scope + 시드 고정) → tbEventTarget 저장
- *      - 즉시 타격: 방어 effect 있으면 방어(markDefended), 없으면 피해(제거/시듦)
- *   2) 이미 처리됐으면 스킵 (재타격 방지).
- *
- * 위협 4종 (차별화):
- *   crow(까마귀) : ready 작물만 노림  / 허수아비 방어 / 못막으면 제거   — 수확물 도둑
- *   pest(해충)   : growing 작물만 노림 / 허수아비 방어 / 못막으면 시듦   — 새싹 망침
- *   drought(가뭄): growing+ready 노림  / 온실 방어    / 못막으면 시듦   — 말라죽음
- *   storm(폭풍)  : growing+ready 노림  / 방어 불가     / 못막으면 제거   — 천재지변
- */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ThreatHandler {
@@ -31,6 +20,7 @@ public class ThreatHandler {
     private final TbPlotEffectRepository plotEffectRepository;
     private final TbCropRepository cropRepository;
     private final TbEventConfigRepository eventConfigRepository;
+    private final AchievementService achievementService;
 
     /** 위협별 정책 정의 */
     private enum Threat {
@@ -89,7 +79,21 @@ public class ThreatHandler {
 
             boolean defended = tryDefend(plot, today, threat.defense);
             if (defended) {
-                target.markDefended();   // IsDefended=1 (업적 집계원)
+                target.markDefended();   // IsDefended=1
+
+                // 업적 체크: 방어 성공 (이벤트 종류별)
+                String condType = switch (event.getEventKey()) {
+                    case "crow"    -> "crow_defended";
+                    case "drought" -> "drought_survived";
+                    default        -> null;
+                };
+                if (condType != null) {
+                    try {
+                        achievementService.checkAndGrant(event.getIdxUser(), condType);
+                    } catch (Exception e) {
+                        // ThreatHandler는 getFarm 흐름 중 호출 → 조용히 무시
+                    }
+                }
             } else {
                 applyDamage(crop, threat.damage);
             }

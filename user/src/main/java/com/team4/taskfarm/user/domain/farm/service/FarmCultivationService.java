@@ -2,10 +2,13 @@ package com.team4.taskfarm.user.domain.farm.service;
 
 import com.team4.taskfarm.common.entity.farm.*;
 import com.team4.taskfarm.common.exception.CustomException;
+import com.team4.taskfarm.user.domain.achievement.service.AchievementService;
 import com.team4.taskfarm.user.domain.farm.dto.CropInvResponse;
 import com.team4.taskfarm.user.domain.farm.dto.SeedInvResponse;
 import com.team4.taskfarm.user.domain.farm.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +21,8 @@ import java.util.stream.Collectors;
  * 모든 동작은 "① 내 농장 확인 → ② 밭 소유 검증 → ③ 재화/상태 검증 → ④ 차감·변경"을 한 트랜잭션으로 처리.
  * 보너스 이벤트(rain/harvest_bonus/fertile) 효과를 각 동작에서 적용.
  */
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FarmCultivationService {
@@ -28,7 +33,8 @@ public class FarmCultivationService {
     private final TbSeedRepository seedRepository;
     private final TbSeedInvRepository seedInvRepository;
     private final TbCropInvRepository cropInvRepository;
-    private final FarmEventService farmEventService;   // 오늘 이벤트(보너스 효과) 확인용
+    private final FarmEventService farmEventService;
+    private final AchievementService achievementService;
 
     /** 물주기 1회당 물방울 비용 */
     private static final int WATER_COST = 1;
@@ -95,17 +101,25 @@ public class FarmCultivationService {
 
         crop.harvest();  // ready 아니면 예외
 
-        // 풍년 이벤트: 수확량 +1
-        int amount = "harvest_bonus".equals(todayEventKey(idxUser)) ? 2 : 1;
+     // 풍년 이벤트: 수확량 +1
+     int amount = "harvest_bonus".equals(todayEventKey(idxUser)) ? 2 : 1;
 
-        cropInvRepository.findByIdxFarmAndIdxSeed(farm.getIdxFarm(), crop.getIdxSeed())
-                .ifPresentOrElse(
-                        ci -> ci.add(amount),
-                        () -> cropInvRepository.save(
-                                TbCropInv.create(farm.getIdxFarm(), crop.getIdxSeed(), amount))
-                );
+     cropInvRepository.findByIdxFarmAndIdxSeed(farm.getIdxFarm(), crop.getIdxSeed())
+             .ifPresentOrElse(
+                     ci -> ci.add(amount),
+                     () -> cropInvRepository.save(
+                             TbCropInv.create(farm.getIdxFarm(), crop.getIdxSeed(), amount))
+             );
 
-        cropRepository.delete(crop);  // 밭 비우기
+     farm.addHarvestCount(amount);   // 누적 수확량 +amount (업적 집계용)
+
+     cropRepository.delete(crop);  // 밭 비우기
+
+     try {
+    	 achievementService.checkAndGrant(idxUser, "crop_harvest_total");
+      } catch (Exception e) {
+    	  log.warn("수확 업적 처리 실패 - idxUser={}, reason={}", idxUser, e.getMessage());
+      }
     }
 
     /**

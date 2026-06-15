@@ -17,4 +17,11 @@ public interface FriendRepository extends JpaRepository<TbFriend, Long> {
             Long idxUserB,
             Status statusB
     );
+
+    long countByIdxUserAAndStatusOrIdxUserBAndStatus(
+            Long idxUserA,
+            Status statusA,
+            Long idxUserB,
+            Status statusB
+    );
 }

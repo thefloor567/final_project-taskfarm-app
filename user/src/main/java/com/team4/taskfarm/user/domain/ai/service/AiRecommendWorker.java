@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team4.taskfarm.common.entity.ai.TbAiLog;
+import com.team4.taskfarm.user.domain.achievement.service.AchievementService;
 import com.team4.taskfarm.user.domain.ai.dto.AiRecommendJobRequest;
 import com.team4.taskfarm.user.domain.ai.dto.AiRecommendJobResult;
 import com.team4.taskfarm.user.domain.ai.dto.AiRecommendResult;
@@ -28,6 +29,8 @@ public class AiRecommendWorker {
 
     // tbAiLog에 추천 결과를 저장하기 위한 Repository
     private final AiLogRepository aiLogRepository;
+    
+    private final AchievementService achievementService;
 
     // 1초마다 Redis Queue를 확인 = 큐에 작업이 있으면 processJob()으로 처리, 작업이 없으면 아무것도 하지 않음
     @Scheduled(fixedDelay = 1000) // 이전 작업 실행이 끝난 뒤 1초 후 다시 실행
@@ -76,6 +79,12 @@ public class AiRecommendWorker {
         } catch (Exception e) {
 
             log.error("AI 추천 작업 처리 실패 - jobId={}", job.jobId(), e);
+            
+            try {
+                achievementService.checkAndGrant(job.idxUser(), "ai_recommend_use");
+            } catch (Exception e1) {
+                log.warn("AI 업적 체크 실패(무시) - user={}, reason={}", job.idxUser(), e1.getMessage());
+            }
 
             queueService.saveJobResult(
                     AiRecommendJobResult.failed(
