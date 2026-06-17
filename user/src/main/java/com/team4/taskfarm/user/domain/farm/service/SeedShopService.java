@@ -41,10 +41,10 @@ public class SeedShopService {
      */
     @Transactional
     public void buySeed(Long idxUser, Long seedId, int qty) {
-        TbFarm farm = farmRepository.findByIdxUser(idxUser)
+        TbFarm farm = farmRepository.findByIdxUserForUpdate(idxUser)
                 .orElseThrow(() -> CustomException.notFound("농장을 찾을 수 없습니다."));
 
-        TbSeed seed = seedRepository.findById(seedId)
+        TbSeed seed = seedRepository.findByIdForUpdate(seedId)
                 .orElseThrow(() -> CustomException.notFound("씨앗 정보를 찾을 수 없습니다."));
 
         int totalPrice = seed.getPrice() * qty;

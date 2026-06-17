@@ -2,7 +2,12 @@ package com.team4.taskfarm.user.domain.farm.repository;
 
 import com.team4.taskfarm.common.entity.farm.TbSeed;
 import org.springframework.data.jpa.repository.JpaRepository;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
 import java.util.List;
 
 public interface TbSeedRepository extends JpaRepository<TbSeed, Long> {
@@ -12,4 +17,8 @@ public interface TbSeedRepository extends JpaRepository<TbSeed, Long> {
     
     /** 상점 진열용 — 판매중인 씨앗만 (Idx 순) */
     List<TbSeed> findByIsActiveTrueOrderByIdxSeedAsc();
+    
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM TbSeed s WHERE s.idxSeed = :seedId")
+    Optional<TbSeed> findByIdForUpdate(@Param("seedId") Long seedId);
 }
