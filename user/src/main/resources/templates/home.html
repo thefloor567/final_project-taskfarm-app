@@ -23,7 +23,10 @@
                 <div class="col-4">
                     <div class="card shadow-sm h-100">
                         <div class="card-body text-center py-4">
-                            <div style="font-size: 28px;">⭐</div>
+                            <div style="font-size: 28px;"
+                            	 data-bs-toggle="tooltip"
+                            	 data-bs-placement="top"
+                            	 title="레벨이 높아질수록 필요한 경험치가 늘어나요!">⭐</div>
                             <div class="fw-bold fs-4 text-gray-900 mt-1" id="level">Lv.1</div>
                             <div class="fs-9 text-gray-500">레벨</div>
                         </div>
@@ -32,7 +35,10 @@
                 <div class="col-4">
                     <div class="card shadow-sm h-100">
                         <div class="card-body text-center py-4">
-                            <div style="font-size: 28px;">💧</div>
+                            <div style="font-size: 28px;"
+                            	 data-bs-toggle="tooltip"
+                            	 data-bs-placement="top"
+                            	 title="레벨업하면 물방울 5개를 받아요. 농장 성장에 사용할 수 있어요!">💧</div>
                             <div class="fw-bold fs-4 text-gray-900 mt-1" id="water">0</div>
                             <div class="fs-9 text-gray-500">물방울</div>
                         </div>
@@ -41,7 +47,10 @@
                 <div class="col-4">
                     <div class="card shadow-sm h-100">
                         <div class="card-body text-center py-4">
-                            <div style="font-size: 28px;">🪙</div>
+                            <div style="font-size: 28px;"
+                            	 data-bs-toggle="tooltip"
+                            	 data-bs-placement="top"
+                            	 title="코인은 작물을 팔아서 얻고, 씨앗·도구·밭을 살 때 사용해요!">🪙</div>
                             <div class="fw-bold fs-4 text-gray-900 mt-1" id="coin">0</div>
                             <div class="fs-9 text-gray-500">코인</div>
                         </div>
@@ -105,7 +114,12 @@
 // 🚧 퍼블리싱 단계: API 연동 전이라 더미로 표시.
 //    홈 API(/api/home) 나오면 fetch로 교체 (아래 loadHome 주석 참고).
 document.addEventListener('DOMContentLoaded', function () {
-	loadHome();
+    loadHome();
+
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 });
 
 function loadHome() {
