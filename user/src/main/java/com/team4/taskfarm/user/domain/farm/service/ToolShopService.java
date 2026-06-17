@@ -59,10 +59,10 @@ public class ToolShopService {
      */
     @Transactional
     public void buyTool(Long idxUser, Long toolId, Long targetPlotId) {
-        TbFarm farm = farmRepository.findByIdxUser(idxUser)
+        TbFarm farm = farmRepository.findByIdxUserForUpdate(idxUser)
                 .orElseThrow(() -> CustomException.notFound("농장을 찾을 수 없습니다."));
 
-        TbTool tool = toolRepository.findById(toolId)
+        TbTool tool = toolRepository.findByIdForUpdate(toolId)
                 .orElseThrow(() -> CustomException.notFound("도구 정보를 찾을 수 없습니다."));
 
         // 공통 검증: 해금레벨 + 코인 + 재고

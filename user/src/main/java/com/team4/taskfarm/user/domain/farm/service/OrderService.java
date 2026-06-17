@@ -73,7 +73,8 @@ public class OrderService {
      */
     @Transactional
     public void fulfillOrder(Long idxUser, Long orderId) {
-        TbFarm farm = getFarm(idxUser);
+    	TbFarm farm = farmRepository.findByIdxUserForUpdate(idxUser)
+    	        .orElseThrow(() -> CustomException.notFound("농장을 찾을 수 없습니다."));
 
         TbOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> CustomException.notFound("주문을 찾을 수 없습니다."));
@@ -91,7 +92,7 @@ public class OrderService {
         // ① 요구 작물 차감 (부족하면 엔티티에서 예외 → 롤백)
         for (TbOrderItem item : items) {
             TbCropInv inv = cropInvRepository
-                    .findByIdxFarmAndIdxSeed(farm.getIdxFarm(), item.getIdxSeed())
+            		.findByIdxFarmAndIdxSeedForUpdate(farm.getIdxFarm(), item.getIdxSeed())
                     .orElseThrow(() -> CustomException.badRequest("작물이 부족합니다."));
             inv.consume(item.getQty());
         }
