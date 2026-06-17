@@ -15,6 +15,7 @@ import com.team4.taskfarm.common.entity.todo.TbTodo;
 import com.team4.taskfarm.common.entity.user.TbUser;
 import com.team4.taskfarm.common.exception.CustomException;
 import com.team4.taskfarm.user.domain.achievement.service.AchievementService;
+import com.team4.taskfarm.user.domain.ai.policy.ExpClampPolicy;
 import com.team4.taskfarm.user.domain.ai.repository.AiLogRepository;
 import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
 import com.team4.taskfarm.user.domain.farm.repository.TbFarmRepository;
@@ -38,13 +39,6 @@ public class RewardService {
     private final RankingService rankingService;
     private final AchievementService achievementService;
 
-    // 레벨디자인 ③ 클램프 범위 (TbExpPolicy에 없으므로 코드 상수)
-    private static final Map<TbTodo.Priority, int[]> CLAMP = Map.of(
-            TbTodo.Priority.A, new int[]{10, 60},
-            TbTodo.Priority.B, new int[]{5, 30},
-            TbTodo.Priority.C, new int[]{1, 15}
-    );
-
     /** 할일 완료 보상 지급 */
     @Transactional
     public void grantTodoDone(Long idxUser, TbTodo.Priority priority, Long idxTodo) {
@@ -54,12 +48,10 @@ public class RewardService {
     	    return;
     	}
     	
-        TbExpPolicy policy = policyOf(priority);
-
-        // AI 추천값 있으면 우선, 없으면 정책 BaseExp → clamp (레벨디자인 공식)
-        int aiExp = getLatestAiRewardExp(idxUser, idxTodo);
-        int raw = (aiExp > 0) ? aiExp : policy.getBaseExp();
-        int granted = clamp(priority, raw);
+    	TbExpPolicy policy = policyOf(priority);
+    	int aiExp = getLatestAiRewardExp(idxUser, idxTodo);
+    	int raw = (aiExp > 0) ? aiExp : policy.getBaseExp();
+    	int granted = ExpClampPolicy.clamp(raw, policy.getMinExp(), policy.getMaxExp());  // ← DB값
 
         // 1) XP 적립 + 레벨업 판정
         TbUser user = userRepository.findById(idxUser)
@@ -114,12 +106,6 @@ public class RewardService {
                 .findTopByIdxUserAndIdxTodoOrderByCreateDateDesc(idxUser, idxTodo)
                 .map(TbAiLog::getRewardExp)
                 .orElse(0);
-    }
-
-    /** 우선순위별 MIN~MAX로 제한 */
-    private int clamp(TbTodo.Priority priority, int raw) {
-        int[] range = CLAMP.get(priority);
-        return Math.max(range[0], Math.min(raw, range[1]));
     }
 
     // 우선순위 -> 정책

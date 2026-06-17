@@ -32,11 +32,19 @@ public class TbExpPolicy extends BaseEntity {
 
     @Column(name = "LevelUpDrops", nullable = false)
     private int levelUpDrops = 5;
+    
+    @Column(name = "MinExp", nullable = false)
+    private int minExp = 1;
+
+    @Column(name = "MaxExp", nullable = false)
+    private int maxExp = 100;
 
     public enum Priority { A, B, C }
 
-    public void update(int baseExp, int doneDrops, int levelUpDrops) {
+    public void update(int baseExp, int minExp, int maxExp, int doneDrops, int levelUpDrops) {
         this.baseExp = baseExp;
+        this.minExp = minExp;
+        this.maxExp = maxExp;
         this.doneDrops = doneDrops;
         this.levelUpDrops = levelUpDrops;
     }

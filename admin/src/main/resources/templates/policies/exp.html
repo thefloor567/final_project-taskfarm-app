@@ -33,6 +33,8 @@
               <thead>
                 <tr class="fw-bold fs-7 text-gray-500 text-uppercase">
                   <th>우선순위</th>
+                  <th style="width:120px;">최소 XP</th>
+				  <th style="width:120px;">최대 XP</th>
                   <th style="width:160px;">완료 XP</th>
                   <th style="width:180px;">완료 시 물방울</th>
                   <th style="width:120px;" class="text-end">저장</th>
@@ -96,6 +98,8 @@
       policies.forEach(p => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
+          <td><input type="number" class="form-control form-control-sm" min="0" value="${p.minExp}" id="min-${p.id}"></td>
+          <td><input type="number" class="form-control form-control-sm" min="0" value="${p.maxExp}" id="max-${p.id}"></td>
           <td><span class="badge badge-sm ${BADGE[p.priority]}">${LABEL[p.priority]}</span></td>
           <td><input type="number" class="form-control form-control-sm" min="0" value="${p.baseExp}" id="xp-${p.id}"></td>
           <td><input type="number" class="form-control form-control-sm" min="0" value="${p.doneDrops}" id="water-${p.id}"></td>
@@ -106,25 +110,33 @@
     }
 
     function savePolicy(id) {
-      const baseExp = parseInt(document.getElementById('xp-' + id).value);
-      const doneDrops = parseInt(document.getElementById('water-' + id).value);
-      const p = policies.find(x => x.id === id);
+        const baseExp = parseInt(document.getElementById('xp-' + id).value);
+        const doneDrops = parseInt(document.getElementById('water-' + id).value);
+        const minExp = parseInt(document.getElementById('min-' + id).value);
+        const maxExp = parseInt(document.getElementById('max-' + id).value);
+        const p = policies.find(x => x.id === id);
 
-      if (isNaN(baseExp) || isNaN(doneDrops) || baseExp < 0 || doneDrops < 0) {
-        return warn("0 이상의 숫자를 입력해주세요.");
+        // 0 이상 숫자 검증 (min/max 포함)
+        if (isNaN(baseExp) || isNaN(doneDrops) || isNaN(minExp) || isNaN(maxExp)
+            || baseExp < 0 || doneDrops < 0 || minExp < 0 || maxExp < 0) {
+          return warn("0 이상의 숫자를 입력해주세요.");
+        }
+        // min ≤ max 검증
+        if (minExp > maxExp) {
+          return warn("최소 XP는 최대 XP보다 클 수 없습니다.");
+        }
+
+        fetch(`/admin/api/policies/exp/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ baseExp, minExp, maxExp, doneDrops, levelUpDrops: p.levelUpDrops })
+        })
+          .then(res => res.json())
+          .then(res => {
+            if (res.result) { ok("정책이 저장되었습니다."); }
+            else { warn(res.message || "저장 실패"); }
+          });
       }
-
-      fetch(`/admin/api/policies/exp/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseExp, doneDrops, levelUpDrops: p.levelUpDrops })
-      })
-        .then(res => res.json())
-        .then(res => {
-          if (res.result) { ok("정책이 저장되었습니다."); }
-          else { warn(res.message || "저장 실패"); }
-        });
-    }
 
     function saveLevelUp() {
       const levelUpDrops = parseInt(document.getElementById('levelUpWater1').value);
@@ -137,7 +149,10 @@
         fetch(`/admin/api/policies/exp/${p.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ baseExp: p.baseExp, doneDrops: p.doneDrops, levelUpDrops })
+          body: JSON.stringify({ 
+        	  baseExp: p.baseExp, minExp: p.minExp, maxExp: p.maxExp, 
+        	  doneDrops: p.doneDrops, levelUpDrops 
+        	})
         }).then(r => r.json())
       )).then(() => {
         policies.forEach(p => p.levelUpDrops = levelUpDrops);

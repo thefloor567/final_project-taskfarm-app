@@ -28,7 +28,8 @@ public class ExpPolicyService {
     public ExpPolicyResponse update(Long id, ExpPolicyRequest request) {
         var policy = expPolicyRepository.findById(id)
                 .orElseThrow(() -> CustomException.notFound("정책을 찾을 수 없습니다."));
-        policy.update(request.getBaseExp(), request.getDoneDrops(), request.getLevelUpDrops());
+        policy.update(request.getBaseExp(), request.getMinExp(), request.getMaxExp(),
+                request.getDoneDrops(), request.getLevelUpDrops());
         return new ExpPolicyResponse(policy);
     }
 }
