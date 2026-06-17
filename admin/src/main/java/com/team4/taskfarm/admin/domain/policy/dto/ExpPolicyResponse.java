@@ -10,6 +10,9 @@ public class ExpPolicyResponse {
     private final int baseExp;
     private final int doneDrops;
     private final int levelUpDrops;
+    private int minExp;
+    private int maxExp;
+    // 생성자에서 policy.getMinExp(), policy.getMaxExp() 매핑
 
     public ExpPolicyResponse(TbExpPolicy p) {
         this.id = p.getIdxExpPolicy();
@@ -17,5 +20,7 @@ public class ExpPolicyResponse {
         this.baseExp = p.getBaseExp();
         this.doneDrops = p.getDoneDrops();
         this.levelUpDrops = p.getLevelUpDrops();
+        this.minExp = p.getMinExp();
+        this.maxExp = p.getMaxExp();
     }
 }
