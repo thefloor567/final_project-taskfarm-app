@@ -133,11 +133,10 @@
                   <div class="fs-9 text-gray-400 mt-1">${prog} / ${a.condValue}</div>`}
               </div>
               ${done ? `
-                <button class="btn btn-sm ${isEquipped ? 'btn-light text-gray-400' : 'btn-light-primary'}"
-                        ${isEquipped ? 'disabled' : ''}
-                        onclick="equipTitle('${a.title.replace(/'/g, "\\'")}')">
-                  ${isEquipped ? '장착중' : '장착'}
-                </button>` : ''}
+            		  <button class="btn btn-sm ${isEquipped ? 'btn-light-danger' : 'btn-light-primary'}"
+            		          onclick="${isEquipped ? "unequipTitle()" : `equipTitle('${a.title.replace(/'/g, "\\'")}')`}">
+            		    ${isEquipped ? '해제' : '장착'}
+            		  </button>` : ''}
             </div>
           </div>`;
         box.appendChild(card);
@@ -162,6 +161,25 @@
           confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' } });
       }
     }
+    
+    async function unequipTitle() {
+    	  try {
+    	    const res = await fetch('/api/achievements/title', {
+    	      method: 'PUT',
+    	      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    	      body: JSON.stringify({ title: null })   // ← null로 보내 해제
+    	    });
+    	    const data = await res.json().catch(() => ({}));
+    	    if (!res.ok || data.result === false) throw new Error(data.message || '해제에 실패했어요.');
+    	    equipped = '';
+    	    renderHeader();
+    	    render();
+    	    Swal.fire({ text: '칭호를 해제했어요.', icon: 'success', timer: 1400, showConfirmButton: false });
+    	  } catch (e) {
+    	    Swal.fire({ text: e.message, icon: 'warning', buttonsStyling: false,
+    	      confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' } });
+    	  }
+    	}
   </script>
 </body>
 
