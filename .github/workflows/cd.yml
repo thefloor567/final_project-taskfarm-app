@@ -88,12 +88,12 @@ jobs:
           ECR_REGISTRY: ${{ needs.build-and-push.outputs.ecr_registry }}
         run: |
           cd config
-          # user dev overlay
+          # user dev overlay  (config images[].name == taskfarm-user-img)
           (cd manifests/user/overlays/dev && \
-            kustomize edit set image taskfarm-user="$ECR_REGISTRY/$USER_ECR_REPOSITORY:$IMAGE_TAG")
-          # admin dev overlay
+            kustomize edit set image taskfarm-user-img="$ECR_REGISTRY/$USER_ECR_REPOSITORY:$IMAGE_TAG")
+          # admin dev overlay (config images[].name == taskfarm-admin-img)
           (cd manifests/admin/overlays/dev && \
-            kustomize edit set image taskfarm-admin="$ECR_REGISTRY/$ADMIN_ECR_REPOSITORY:$IMAGE_TAG")
+            kustomize edit set image taskfarm-admin-img="$ECR_REGISTRY/$ADMIN_ECR_REPOSITORY:$IMAGE_TAG")
 
       - name: Commit and push config changes
         run: |
