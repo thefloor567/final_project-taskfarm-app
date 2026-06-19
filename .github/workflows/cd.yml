@@ -6,32 +6,34 @@ on:
       - main
 
 permissions:
-  id-token: write
+  id-token: write      # OIDC로 AWS 인증
   contents: read
 
 env:
   AWS_REGION: ap-northeast-2
   USER_ECR_REPOSITORY: team4-dev-taskfarm-user
   ADMIN_ECR_REPOSITORY: team4-dev-taskfarm-admin
-  # [주석 처리] config 레포가 아직 작성 중이라 update-config job을 비활성화.
-  #   config 구조(manifests/{user,admin}/overlays/dev)와 image name이 확정되면
-  #   아래 update-config job과 함께 주석 해제하고 경로를 맞출 것.
-  # CONFIG_REPO: CLD-05/team4-taskfarm-config
-  # CONFIG_DEV_PATH: manifests/user/overlays/dev   # ← 실제 구조로 (기존 apps/overlays/dev는 없는 경로)
+  CONFIG_REPO: CLD-05/team4-taskfarm-config
+  ENV_PREFIX: dev      # ← prod 갈 때 prod ECR + prod-{sha}로 환경 job 추가/분기
 
 jobs:
+  # =====================================================================
+  # 1) 이미지 빌드 + ECR 푸시
+  # =====================================================================
   build-and-push:
     name: Build and Push to ECR
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.image-tag.outputs.image_tag }}
+      ecr_registry: ${{ steps.ecr-login.outputs.registry }}
     steps:
       - name: Checkout app repo
         uses: actions/checkout@v4
 
       - name: Set image tag
         id: image-tag
-        run: echo "image_tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+        # 환경 prefix + 짧은 SHA  →  예: dev-a1b2c3d
+        run: echo "image_tag=${ENV_PREFIX}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -48,58 +50,57 @@ jobs:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ steps.image-tag.outputs.image_tag }}
         run: |
-          docker build -f user/Dockerfile -t $ECR_REGISTRY/$USER_ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$USER_ECR_REPOSITORY:$IMAGE_TAG
+          docker build -f user/Dockerfile -t "$ECR_REGISTRY/$USER_ECR_REPOSITORY:$IMAGE_TAG" .
+          docker push "$ECR_REGISTRY/$USER_ECR_REPOSITORY:$IMAGE_TAG"
 
       - name: Build and push admin image
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ steps.image-tag.outputs.image_tag }}
         run: |
-          docker build -f admin/Dockerfile -t $ECR_REGISTRY/$ADMIN_ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ADMIN_ECR_REPOSITORY:$IMAGE_TAG
+          docker build -f admin/Dockerfile -t "$ECR_REGISTRY/$ADMIN_ECR_REPOSITORY:$IMAGE_TAG" .
+          docker push "$ECR_REGISTRY/$ADMIN_ECR_REPOSITORY:$IMAGE_TAG"
 
   # =====================================================================
-  # [주석 처리] update-config job — config 레포 작성 완료 후 활성화
-  #
-  #   현재 config 레포가 스켈레톤(주석만) 상태라, 이미지 태그를 갱신할
-  #   kustomization이 아직 없음. 활성화 전 맞춰야 할 것:
-  #     1. CONFIG_DEV_PATH: user/admin이 분리된 구조라 경로가 2개
-  #        (manifests/user/overlays/dev, manifests/admin/overlays/dev)
-  #     2. kustomize image name: config의 images[].name과 좌변 통일
-  #        (권장: 논리명 taskfarm-user + newName(ECR경로) + newTag 구조)
-  #     3. user/admin을 각 디렉토리에서 따로 edit
-  #
-  # update-config:
-  #   name: Update config repo image tag
-  #   runs-on: ubuntu-latest
-  #   needs: build-and-push
-  #   steps:
-  #     - name: Checkout config repo
-  #       uses: actions/checkout@v4
-  #       with:
-  #         repository: ${{ env.CONFIG_REPO }}
-  #         token: ${{ secrets.CONFIG_REPO_TOKEN }}
-  #         path: config
-  #     - name: Update image tags
-  #       env:
-  #         IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-  #         ECR_REGISTRY: <ECR 레지스트리 주소>
-  #       run: |
-  #         cd config
-  #         # user
-  #         cd manifests/user/overlays/dev
-  #         kustomize edit set image taskfarm-user=$ECR_REGISTRY/$USER_ECR_REPOSITORY:$IMAGE_TAG
-  #         cd -
-  #         # admin
-  #         cd manifests/admin/overlays/dev
-  #         kustomize edit set image taskfarm-admin=$ECR_REGISTRY/$ADMIN_ECR_REPOSITORY:$IMAGE_TAG
-  #     - name: Commit and push config changes
-  #       run: |
-  #         cd config
-  #         git config user.name "github-actions"
-  #         git config user.email "github-actions@github.com"
-  #         git add .
-  #         git commit -m "chore: update dev image tag ${{ needs.build-and-push.outputs.image_tag }}" || echo "No changes to commit"
-  #         git push
+  # 2) config 레포의 dev 오버레이 이미지 태그 갱신 (GitOps)
+  #    ArgoCD가 config 변경을 감지 → dev 클러스터에 새 이미지 배포
   # =====================================================================
+  update-config:
+    name: Update config repo image tag (dev)
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Checkout config repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CONFIG_REPO }}
+          token: ${{ secrets.CONFIG_REPO_TOKEN }}   # config 레포 push 권한 PAT
+          path: config
+
+      - name: Install kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Update image tags (user / admin)
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          ECR_REGISTRY: ${{ needs.build-and-push.outputs.ecr_registry }}
+        run: |
+          cd config
+          # user dev overlay
+          (cd manifests/user/overlays/dev && \
+            kustomize edit set image taskfarm-user="$ECR_REGISTRY/$USER_ECR_REPOSITORY:$IMAGE_TAG")
+          # admin dev overlay
+          (cd manifests/admin/overlays/dev && \
+            kustomize edit set image taskfarm-admin="$ECR_REGISTRY/$ADMIN_ECR_REPOSITORY:$IMAGE_TAG")
+
+      - name: Commit and push config changes
+        run: |
+          cd config
+          git config user.name  "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "chore(dev): update image tag ${{ needs.build-and-push.outputs.image_tag }}" \
+            || echo "No changes to commit"
+          git push
