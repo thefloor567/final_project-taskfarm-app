@@ -67,7 +67,7 @@ public class SecurityConfig {
                 ).permitAll()
                 
                 // 헬스체크 (EKS liveness/readiness) + 에러 포워딩
-                .requestMatchers("/actuator/health/**", "/error").permitAll()
+                .requestMatchers("/actuator/health/**", "/error", "/actuator/prometheus").permitAll()
 
                 // 인증 API 중 로그인/회원가입만 허용
                 .requestMatchers(
