@@ -1,7 +1,6 @@
 server:
   port: 8081
   servlet:
-    # ⭐ Ingress "/admin" 경로 라우팅과 정합 (강사 피드백). 절대 빼면 안 됨.
     context-path: /admin
 
 spring:
@@ -11,14 +10,14 @@ spring:
   # ── DB (user앱과 같은 RDS 공유) ──
   datasource:
     master:
-      jdbc-url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:taskfarm}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-      username: ${DB_USERNAME:taskfarm}
-      password: ${DB_PASSWORD:taskfarm1234}
+      jdbc-url: jdbc:mysql://${DB_HOST:}:${DB_PORT:}/${DB_NAME:taskfarm}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      username: ${DB_USERNAME:}
+      password: ${DB_PASSWORD:}
       driver-class-name: com.mysql.cj.jdbc.Driver
     replica:
-      jdbc-url: jdbc:mysql://${DB_REPLICA_HOST:${DB_HOST:localhost}}:${DB_PORT:3306}/${DB_NAME:taskfarm}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-      username: ${DB_USERNAME:taskfarm}
-      password: ${DB_PASSWORD:taskfarm1234}
+      jdbc-url: jdbc:mysql://${DB_REPLICA_HOST:${DB_HOST:}}:${DB_PORT:}/${DB_NAME:}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      username: ${DB_USERNAME:}
+      password: ${DB_PASSWORD:}
       driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -37,7 +36,7 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
 jwt:
-  secret: ${JWT_SECRET:local-dev-secret-please-change-this-to-long-random-string}
+  secret: ${JWT_SECRET:}
   expiration: ${JWT_EXPIRATION:86400000}
 
 management:
