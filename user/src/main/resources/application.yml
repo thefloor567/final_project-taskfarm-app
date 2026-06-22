@@ -9,9 +9,9 @@ spring:
     
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      username: ${REDIS_USERNAME:default}
+      host: ${REDIS_HOST:}
+      port: ${REDIS_PORT:}
+      username: ${REDIS_USERNAME:}
       password: ${REDIS_PASSWORD:}
       ssl:
         enabled: false
@@ -19,16 +19,16 @@ spring:
   # ── DB (admin앱과 같은 RDS 공유) ──
   datasource:
     master:
-      jdbc-url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:taskfarm}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-      username: ${DB_USERNAME:taskfarm}
-      password: ${DB_PASSWORD:taskfarm1234}
+      jdbc-url: jdbc:mysql://${DB_HOST:}:${DB_PORT:}/${DB_NAME:}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      username: ${DB_USERNAME:}
+      password: ${DB_PASSWORD:}
       driver-class-name: com.mysql.cj.jdbc.Driver
     replica:
       # DB_REPLICA_HOST 가 있으면 그 호스트, 없으면 master 호스트로 폴백
       # → 로컬/인프라전엔 같은 DB, prod 에서 DB_REPLICA_HOST 주입하면 분리 (yml 변경 0)
-      jdbc-url: jdbc:mysql://${DB_REPLICA_HOST:${DB_HOST:localhost}}:${DB_PORT:3306}/${DB_NAME:taskfarm}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-      username: ${DB_USERNAME:taskfarm}
-      password: ${DB_PASSWORD:taskfarm1234}
+      jdbc-url: jdbc:mysql://${DB_REPLICA_HOST:${DB_HOST:}}:${DB_PORT:}/${DB_NAME:}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      username: ${DB_USERNAME:}
+      password: ${DB_PASSWORD:}
       driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -47,7 +47,7 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
 jwt:
-  secret: ${JWT_SECRET:local-dev-secret-please-change-this-to-long-random-string}
+  secret: ${JWT_SECRET:}
   expiration: ${JWT_EXPIRATION:86400000}
 
 management:
