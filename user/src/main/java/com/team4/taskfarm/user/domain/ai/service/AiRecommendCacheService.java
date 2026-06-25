@@ -89,7 +89,7 @@ public class AiRecommendCacheService {
             return "";
         }
 
-        return value.trim().toLowerCase();
+        return value.trim().toLowerCase().replaceAll("\\s+", "");
     }
 
     // 문자열을 SHA-256 해시로 변경 => Redis key가 너무 길어지거나 한글/공백 등이 섞이는 것을 피하기 위해 사용
