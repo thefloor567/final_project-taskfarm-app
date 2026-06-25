@@ -1,16 +1,22 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
 <head th:fragment="head(title)">
     <meta charset="UTF-8">
     <title th:text="${title} + ' | TaskFarm'">TaskFarm</title>
+
+    <!-- favicon: 🌱 이모지 SVG (파일 불필요, favicon.ico 500 해결) -->
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+
     <!-- ⚠️ Foldy는 maximum-scale=1, user-scalable=no 였음(모바일 전용).
          PC도 쓸 거라 확대 막는 옵션 제거 — 접근성에도 좋음 -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- 폰트 -->
-	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700">
-	<!-- 이모지 폰트 (기기별 두부 □ 방지 — 모든 기기 동일 이모지) -->
-	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700">
+    <!-- 이모지 폰트 (기기별 두부 □ 방지 — 모든 기기 동일 이모지) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
 
     <!-- Metronic 플러그인 CSS -->
     <link th:href="@{/plugins/global/plugins.bundle.css}" rel="stylesheet">
@@ -26,25 +32,29 @@
            - 모바일: 화면 꽉 참 / PC: 가운데로 모여 휑하지 않음.
            - 좁게(480px) 갇히던 문제 해결.
            ============================================================ */
-        html, body {
-		    height: 100%;
-		    margin: 0;
-		    background-color: #f5f5f5;
-		    /* 이모지 fallback: 본문 폰트 뒤에 Noto Color Emoji를 둬서
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background-color: #f5f5f5;
+            /* 이모지 fallback: 본문 폰트 뒤에 Noto Color Emoji를 둬서
 		       기기에 이모지 폰트 없어도 두부 □ 대신 통일된 이모지로 렌더 */
-		    font-family: 'Inter', 'Noto Color Emoji', sans-serif;
-		}
+            font-family: 'Inter', 'Noto Color Emoji', sans-serif;
+        }
 
         /* 앱 전체를 감싸는 껍데기: 가운데 정렬 + 최대폭 제한 */
         .app-shell {
             width: 100%;
-            max-width: 900px;       /* PC에서 이 폭까지만. 더 넓게 원하면 키우면 됨 */
+            max-width: 900px;
+            /* PC에서 이 폭까지만. 더 넓게 원하면 키우면 됨 */
             min-height: 100vh;
-            margin: 0 auto;          /* 가운데 정렬 */
+            margin: 0 auto;
+            /* 가운데 정렬 */
             background-color: #ffffff;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 0 24px rgba(0,0,0,.06);  /* PC에서 양옆 구분 */
+            box-shadow: 0 0 24px rgba(0, 0, 0, .06);
+            /* PC에서 양옆 구분 */
         }
 
         /* 콘텐츠 영역만 스크롤 (헤더/네비 고정 유지) */
@@ -53,11 +63,18 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
         }
-        #scrollContainer::-webkit-scrollbar { width: 6px; }
+
+        #scrollContainer::-webkit-scrollbar {
+            width: 6px;
+        }
+
         #scrollContainer::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,.15); border-radius: 3px;
+            background: rgba(0, 0, 0, .15);
+            border-radius: 3px;
         }
     </style>
 </head>
+
 <body></body>
+
 </html>
