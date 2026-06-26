@@ -13,6 +13,8 @@ import com.team4.taskfarm.user.domain.farm.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.team4.taskfarm.common.entity.farm.TbCoinLedger;
+import com.team4.taskfarm.user.domain.farm.repository.TbCoinLedgerRepository;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -33,6 +35,7 @@ public class FarmService {
     private final ThreatHandler threatHandler;
     private final FarmEventService farmEventService;
     private final WitherChecker witherChecker;
+    private final TbCoinLedgerRepository coinLedgerRepository;
 
     /** 신규 유저 농장 기본 밭 개수 */
     private static final int DEFAULT_PLOT_COUNT = 6;
@@ -141,6 +144,14 @@ public class FarmService {
         for (int slot = 1; slot <= DEFAULT_PLOT_COUNT; slot++) {
             plotRepository.save(TbPlot.create(farm.getIdxFarm(), slot));
         }
+
+        // 신규 가입 보너스 100코인 — 잔고 적립 + 원장 기록(이력 남김)
+        final int SIGNUP_BONUS = 100;
+        farm.earnCoin(SIGNUP_BONUS);
+        coinLedgerRepository.save(
+            TbCoinLedger.earn(farm.getIdxFarm(), SIGNUP_BONUS, "SIGNUP_BONUS", null)
+        );
+
         return farm;
     }
 

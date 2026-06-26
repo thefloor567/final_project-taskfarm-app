@@ -47,7 +47,7 @@ public class TbFarm extends BaseEntity {
         f.idxUser = idxUser;
         f.name = "내 농장";
         f.drops = 0;
-        f.coin = 100;
+        f.coin = 0;
         //f.scarecrowLeft = 0;
         return f;
     }
