@@ -10,13 +10,11 @@
 
     <div class="admin-content">
 
-      <!-- 뒤로 -->
       <a href="/admin/users" class="btn btn-sm btn-light mb-4">
         <i class="ki-duotone ki-arrow-left fs-4"><span class="path1"></span><span class="path2"></span></i>
         목록으로
       </a>
 
-      <!-- 프로필 헤더 -->
       <div class="card shadow-sm mb-4">
         <div class="card-body">
           <div class="d-flex align-items-center gap-4">
@@ -25,16 +23,17 @@
             <div>
               <h2 class="fw-bolder fs-3 text-gray-900 mb-1" id="nickname">유저</h2>
               <p class="text-gray-500 fs-7 mb-0" id="email">email</p>
+              <div class="mt-2" id="statusArea"></div>
             </div>
             <div class="ms-auto text-end">
               <span class="badge badge-light-primary fs-6" id="level">Lv.1</span>
               <div class="fs-8 text-gray-400 mt-1" id="joinDate">가입일 -</div>
+              <div class="mt-3" id="actionArea"></div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 활동 요약 -->
       <div class="row g-4 mb-4">
         <div class="col-sm-3">
           <div class="card shadow-sm h-100">
@@ -70,7 +69,6 @@
         </div>
       </div>
 
-      <!-- 활동 추이 차트 -->
       <div class="card shadow-sm">
         <div class="card-header">
           <h3 class="card-title fs-5">최근 활동 (할일 완료)</h3>
@@ -91,7 +89,6 @@
       location.href = '/admin/';
     }
 
-    // 컨트롤러가 넘긴 userId
     const userId = /*[[${userId}]]*/ 1;
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -99,6 +96,7 @@
         .then(res => res.json())
         .then(res => {
           const d = res.data;
+
           document.getElementById('nickname').textContent = d.nickname;
           document.getElementById('email').textContent = d.email;
           document.getElementById('level').textContent = 'Lv.' + d.level;
@@ -107,6 +105,16 @@
           document.getElementById('completionRate').textContent = d.completionRate + '%';
           document.getElementById('totalXp').textContent = d.totalXp.toLocaleString();
           document.getElementById('cropCount').textContent = d.cropCount;
+
+          const isSuspended = d.status === 'SUSPENDED';
+
+          document.getElementById('statusArea').innerHTML = isSuspended
+            ? '<span class="badge badge-light-danger fs-7">정지</span>'
+            : '<span class="badge badge-light-success fs-7">정상</span>';
+
+          document.getElementById('actionArea').innerHTML = isSuspended
+            ? `<button type="button" class="btn btn-sm btn-light-success" onclick="activateUser(${d.userId})">정지 해제</button>`
+            : `<button type="button" class="btn btn-sm btn-light-danger" onclick="suspendUser(${d.userId})">유저 정지</button>`;
 
           if (typeof ApexCharts !== 'undefined') {
             new ApexCharts(document.getElementById('activityChart'), {
@@ -121,6 +129,52 @@
         })
         .catch(err => console.error(err));
     });
+
+    function suspendUser(userId) {
+      if (!confirm('해당 유저를 정지하시겠습니까? 정지된 유저는 로그인할 수 없습니다.')) {
+        return;
+      }
+
+      fetch(`/admin/api/users/${userId}/suspend`, {
+        method: 'PATCH'
+      })
+        .then(res => res.json())
+        .then(res => {
+          if (!res.result) {
+            alert(res.message || '유저 정지에 실패했습니다.');
+            return;
+          }
+          alert('유저가 정지되었습니다.');
+          location.reload();
+        })
+        .catch(err => {
+          console.error(err);
+          alert('유저 정지 중 오류가 발생했습니다.');
+        });
+    }
+
+    function activateUser(userId) {
+      if (!confirm('해당 유저의 정지를 해제하시겠습니까?')) {
+        return;
+      }
+
+      fetch(`/admin/api/users/${userId}/activate`, {
+        method: 'PATCH'
+      })
+        .then(res => res.json())
+        .then(res => {
+          if (!res.result) {
+            alert(res.message || '유저 정지 해제에 실패했습니다.');
+            return;
+          }
+          alert('유저 정지가 해제되었습니다.');
+          location.reload();
+        })
+        .catch(err => {
+          console.error(err);
+          alert('유저 정지 해제 중 오류가 발생했습니다.');
+        });
+    }
   </script>
 </body>
 

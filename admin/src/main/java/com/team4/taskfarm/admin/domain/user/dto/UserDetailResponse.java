@@ -14,15 +14,17 @@ public class UserDetailResponse {
     private final int level;
     private final String joinDate;
     private final long doneCount;
-    private final double completionRate;   // 0.0 ~ 100.0
+    private final double completionRate; // 0.0 ~ 100.0
     private final int totalXp;
     private final long cropCount;
     private final List<String> activityLabels;
     private final List<Long> activityData;
+    private final String status;
 
     public UserDetailResponse(TbUser u, long doneCount, double completionRate,
-                              long cropCount, List<String> activityLabels, List<Long> activityData) {
+            long cropCount, List<String> activityLabels, List<Long> activityData) {
         this.userId = u.getIdxUser();
+        this.status = u.getStatus().name();
         this.nickname = u.getNickname();
         this.email = u.getEmail();
         this.level = u.getLevel();

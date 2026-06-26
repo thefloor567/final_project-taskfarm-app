@@ -59,4 +59,28 @@ public class AdminUserService {
 
         return new UserDetailResponse(user, doneCount, rate, cropCount, labels, data);
     }
+
+    @Transactional
+    public void suspendUser(Long userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
+
+        if (user.getDeleteDate() != null) {
+            throw CustomException.badRequest("탈퇴한 유저는 정지할 수 없습니다.");
+        }
+
+        user.suspend();
+    }
+
+    @Transactional
+    public void activateUser(Long userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> CustomException.notFound("유저를 찾을 수 없습니다."));
+
+        if (user.getDeleteDate() != null) {
+            throw CustomException.badRequest("탈퇴한 유저는 정지 해제할 수 없습니다.");
+        }
+
+        user.activate();
+    }
 }

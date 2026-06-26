@@ -27,9 +27,11 @@
               <thead>
                 <tr class="fw-bold fs-7 text-gray-500 text-uppercase">
                   <th>유저</th>
+                  <th class="text-center">상태</th>
                   <th class="text-center">레벨</th>
                   <th class="text-center">완료한 할일</th>
                   <th class="text-center">가입일</th>
+                  <th class="text-center">관리</th>
                   <th class="text-center">상세</th>
                 </tr>
               </thead>
@@ -37,7 +39,6 @@
             </table>
           </div>
 
-          <!-- 결과 없음 -->
           <div id="emptyState" class="text-center py-10 d-none">
             <span class="fs-6 text-gray-400">검색 결과가 없어요</span>
           </div>
@@ -77,9 +78,20 @@
         empty.classList.remove('d-none');
         return;
       }
+
       empty.classList.add('d-none');
 
       list.forEach(u => {
+        const isSuspended = u.status === 'SUSPENDED';
+
+        const statusBadge = isSuspended
+          ? '<span class="badge badge-light-danger">정지</span>'
+          : '<span class="badge badge-light-success">정상</span>';
+
+        const actionButton = isSuspended
+          ? `<button type="button" class="btn btn-sm btn-light-success" onclick="activateUser(${u.userId})">정지 해제</button>`
+          : `<button type="button" class="btn btn-sm btn-light-danger" onclick="suspendUser(${u.userId})">정지</button>`;
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>
@@ -92,9 +104,11 @@
                     </div>
                 </div>
             </td>
+            <td class="text-center">${statusBadge}</td>
             <td class="text-center"><span class="badge badge-light-primary">Lv.${u.level}</span></td>
             <td class="text-center fw-semibold">${u.doneCount}</td>
             <td class="text-center fs-7 text-gray-600">${u.joinDate}</td>
+            <td class="text-center">${actionButton}</td>
             <td class="text-center">
                 <a href="/admin/users/${u.userId}" class="btn btn-sm btn-light-primary">보기</a>
             </td>
@@ -108,6 +122,52 @@
       const filtered = users.filter(u =>
         u.nickname.toLowerCase().includes(kw) || u.email.toLowerCase().includes(kw));
       render(filtered);
+    }
+
+    function suspendUser(userId) {
+      if (!confirm('해당 유저를 정지하시겠습니까? 정지된 유저는 로그인할 수 없습니다.')) {
+        return;
+      }
+
+      fetch(`/admin/api/users/${userId}/suspend`, {
+        method: 'PATCH'
+      })
+        .then(res => res.json())
+        .then(res => {
+          if (!res.result) {
+            alert(res.message || '유저 정지에 실패했습니다.');
+            return;
+          }
+          alert('유저가 정지되었습니다.');
+          location.reload();
+        })
+        .catch(err => {
+          console.error(err);
+          alert('유저 정지 중 오류가 발생했습니다.');
+        });
+    }
+
+    function activateUser(userId) {
+      if (!confirm('해당 유저의 정지를 해제하시겠습니까?')) {
+        return;
+      }
+
+      fetch(`/admin/api/users/${userId}/activate`, {
+        method: 'PATCH'
+      })
+        .then(res => res.json())
+        .then(res => {
+          if (!res.result) {
+            alert(res.message || '유저 정지 해제에 실패했습니다.');
+            return;
+          }
+          alert('유저 정지가 해제되었습니다.');
+          location.reload();
+        })
+        .catch(err => {
+          console.error(err);
+          alert('유저 정지 해제 중 오류가 발생했습니다.');
+        });
     }
   </script>
 </body>
