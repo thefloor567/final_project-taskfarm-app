@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
 <head></head>
+
 <body>
 
     <!-- 기본 홈 헤더 -->
@@ -13,7 +15,9 @@
     <th:block th:fragment="header-main">
         <div class="d-flex flex-column-auto bg-white border-bottom px-4 py-3">
             <div class="d-flex justify-content-between align-items-center w-100">
-                <span class="fw-bolder fs-3 text-gray-900">🌾 TaskFarm</span>
+                <a href="/home" class="text-decoration-none">
+                    <span class="fw-bolder fs-3 text-gray-900">🌾 TaskFarm</span>
+                </a>
                 <div class="d-flex align-items-center gap-2">
 
                     <!-- 소셜 (랭킹/친구) -->
@@ -32,9 +36,8 @@
                             <span class="path1"></span>
                             <span class="path2"></span>
                         </i>
-                        <span id="mailBadge"
-                              class="badge badge-circle badge-danger position-absolute d-none"
-                              style="top:-4px; right:-4px; font-size:9px; min-width:16px; height:16px; padding:0 4px;">0</span>
+                        <span id="mailBadge" class="badge badge-circle badge-danger position-absolute d-none"
+                            style="top:-4px; right:-4px; font-size:9px; min-width:16px; height:16px; padding:0 4px;">0</span>
                     </a>
 
                     <!-- 마이페이지 -->
@@ -88,4 +91,5 @@
     </th:block>
 
 </body>
+
 </html>

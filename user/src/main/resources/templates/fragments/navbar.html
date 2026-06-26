@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
 <head></head>
+
 <body>
 
     <!-- ============================================================
@@ -10,64 +12,58 @@
            position:sticky + 부모 기준 배치. 별도 px 계산 불필요.
          ============================================================ -->
     <th:block th:fragment="navbar-main(active)">
-        <div class="bg-white border-top"
-             style="position: sticky; bottom: 0; z-index: 100;">
+        <div class="bg-white border-top" style="position: sticky; bottom: 0; z-index: 100;">
             <div class="d-flex flex-row justify-content-around align-items-center w-100 py-2">
 
-                <a href="/home"
-                   class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
+                <a href="/home" class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
                     <i class="ki-duotone ki-home fs-2x"
-                       th:classappend="${active == 'home'} ? 'text-primary' : 'text-gray-400'">
+                        th:classappend="${active == 'home'} ? 'text-primary' : 'text-gray-400'">
                         <span class="path1"></span>
                         <span class="path2"></span>
                     </i>
                     <span class="fs-9"
-                          th:classappend="${active == 'home'} ? 'text-primary fw-semibold' : 'text-gray-400'">홈</span>
+                        th:classappend="${active == 'home'} ? 'text-primary fw-semibold' : 'text-gray-400'">홈</span>
                 </a>
 
-                <a href="/todo/list"
-                   class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
+                <a href="/todo/list" class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
                     <i class="ki-duotone ki-check-square fs-2x"
-                       th:classappend="${active == 'todo'} ? 'text-primary' : 'text-gray-400'">
+                        th:classappend="${active == 'todo'} ? 'text-primary' : 'text-gray-400'">
                         <span class="path1"></span>
                         <span class="path2"></span>
                     </i>
                     <span class="fs-9"
-                          th:classappend="${active == 'todo'} ? 'text-primary fw-semibold' : 'text-gray-400'">할일</span>
+                        th:classappend="${active == 'todo'} ? 'text-primary fw-semibold' : 'text-gray-400'">할일</span>
                 </a>
 
-                <a href="/farm"
-                   class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
+                <a href="/farm" class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
                     <i class="ki-duotone ki-tree fs-2x"
-                       th:classappend="${active == 'farm'} ? 'text-primary' : 'text-gray-400'">
+                        th:classappend="${active == 'farm'} ? 'text-primary' : 'text-gray-400'">
                         <span class="path1"></span>
                         <span class="path2"></span>
                         <span class="path3"></span>
                     </i>
                     <span class="fs-9"
-                          th:classappend="${active == 'farm'} ? 'text-primary fw-semibold' : 'text-gray-400'">농장</span>
+                        th:classappend="${active == 'farm'} ? 'text-primary fw-semibold' : 'text-gray-400'">농장</span>
                 </a>
 
-                <a href="/stats"
-                   class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
+                <a href="/stats" class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
                     <i class="ki-duotone ki-chart fs-2x"
-                       th:classappend="${active == 'stats'} ? 'text-primary' : 'text-gray-400'">
+                        th:classappend="${active == 'stats'} ? 'text-primary' : 'text-gray-400'">
                         <span class="path1"></span>
                         <span class="path2"></span>
                     </i>
                     <span class="fs-9"
-                          th:classappend="${active == 'stats'} ? 'text-primary fw-semibold' : 'text-gray-400'">통계</span>
+                        th:classappend="${active == 'stats'} ? 'text-primary fw-semibold' : 'text-gray-400'">통계</span>
                 </a>
 
-                <a href="/mypage"
-                   class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
+                <a href="/mypage" class="d-flex flex-column align-items-center gap-1 px-3 text-decoration-none">
                     <i class="ki-duotone ki-user fs-2x"
-                       th:classappend="${active == 'mypage'} ? 'text-primary' : 'text-gray-400'">
+                        th:classappend="${active == 'mypage'} ? 'text-primary' : 'text-gray-400'">
                         <span class="path1"></span>
                         <span class="path2"></span>
                     </i>
                     <span class="fs-9"
-                          th:classappend="${active == 'mypage'} ? 'text-primary fw-semibold' : 'text-gray-400'">마이</span>
+                        th:classappend="${active == 'mypage'} ? 'text-primary fw-semibold' : 'text-gray-400'">마이</span>
                 </a>
 
             </div>
@@ -81,10 +77,8 @@
            → th:attr 로 onclick 문자열을 안전하게 조립.
          ============================================================ -->
     <th:block th:fragment="btn-add(href)">
-        <button type="button" id="fabBtn"
-                th:attr="onclick=${href != null} ? |location.href='${href}'| : null"
-                class="btn btn-primary btn-icon rounded-circle shadow-lg"
-                style="position: absolute; bottom: 80px; right: 20px;
+        <button type="button" id="fabBtn" th:attr="onclick=${href != null} ? |location.href='${href}'| : null"
+            class="btn btn-primary btn-icon rounded-circle shadow-lg" style="position: absolute; bottom: 100px; right: 20px;
                        width: 52px; height: 52px; z-index: 99;">
             <i class="ki-duotone ki-plus fs-2x">
                 <span class="path1"></span>
@@ -93,4 +87,5 @@
     </th:block>
 
 </body>
+
 </html>

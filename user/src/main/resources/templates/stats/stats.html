@@ -119,15 +119,15 @@
         stats.currentLevel = summary.currentLevel || 1;
         stats.categories = categories.length > 0
           ? categories.map(category => ({
-              name: category.categoryName,
-              rate: category.completionRate,
-              color: category.color || '#cccccc'
-            }))
+            name: category.categoryName,
+            rate: category.completionRate,
+            color: category.color || '#cccccc'
+          }))
           : [
-              { name: '건강', rate: 0, color: '#1BC5BD' },
-              { name: '공부', rate: 0, color: '#3699FF' },
-              { name: '집안일', rate: 0, color: '#FFA800' }
-            ];
+            { name: '건강', rate: 0, color: '#1BC5BD' },
+            { name: '공부', rate: 0, color: '#3699FF' },
+            { name: '집안일', rate: 0, color: '#FFA800' }
+          ];
         stats.weekly = {
           labels: weekly.map(item => item.label),
           data: weekly.map(item => item.doneCount)
@@ -141,6 +141,17 @@
       }
     }
 
+    // 차트 y축 최대값을 데이터 기준으로 계산
+    // - 데이터 최고값에 여유(20%)를 주고 깔끔한 눈금 단위로 올림
+    // - 데이터가 없거나 0이면 fallback 값으로(축이 깨지지 않게)
+    function niceMax(values, fallback, step) {
+      const nums = (values || []).filter(v => typeof v === 'number' && !isNaN(v));
+      const peak = nums.length ? Math.max(...nums) : 0;
+      if (peak <= 0) return fallback;
+      const s = step || 10;
+      return Math.ceil((peak * 1.2) / s) * s;
+    }
+
     function renderCharts() {
       // ApexCharts는 Metronic plugins.bundle.js에 포함됨
       if (typeof ApexCharts === 'undefined') {
@@ -148,7 +159,7 @@
         return;
       }
 
-      // 1) 카테고리별 완료율 (가로 막대)
+      // 1) 카테고리별 완료율 (가로 막대) — 완료율이라 0~100 고정이 맞음
       new ApexCharts(document.getElementById('categoryChart'), {
         series: [{
           name: '완료율',
@@ -163,18 +174,21 @@
         legend: { show: false }
       }).render();
 
-      // 2) 주간 완료 추이 (세로 막대)
+      // 2) 주간 완료 추이 (세로 막대) — 최소 7 보장하되, 더 많이 하면 그만큼 확장
+      const weeklyMax = Math.max(7, niceMax(stats.weekly.data, 7, 1));
       new ApexCharts(document.getElementById('weeklyChart'), {
         series: [{ name: '완료', data: stats.weekly.data }],
         chart: { type: 'bar', height: 200, toolbar: { show: false } },
         plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
         colors: ['#3699FF'],
         xaxis: { categories: stats.weekly.labels },
-        yaxis: { min: 0, max: 7, tickAmount: 1 },
+        yaxis: { min: 0, max: weeklyMax, tickAmount: Math.min(weeklyMax, 7) },
         dataLabels: { enabled: false }
       }).render();
 
-      // 3) XP 성장 (라인)
+      // 3) XP 성장 (라인) — 유저의 최고 XP 기준으로 y축 자동 조정
+      //    (예전엔 min:100, max:900 고정이라 XP 30 같은 작은 값이 안 보였음)
+      const xpMax = niceMax(stats.xp.data, 100, 10);
       new ApexCharts(document.getElementById('xpChart'), {
         series: [{ name: 'XP', data: stats.xp.data }],
         chart: { type: 'area', height: 200, toolbar: { show: false } },
@@ -182,7 +196,7 @@
         stroke: { curve: 'smooth', width: 3 },
         fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 } },
         xaxis: { categories: stats.xp.labels },
-        yaxis: { min: 100, max: 900, tickAmount: 4 },
+        yaxis: { min: 0, max: xpMax, tickAmount: 4 },
         dataLabels: { enabled: false }
       }).render();
     }
