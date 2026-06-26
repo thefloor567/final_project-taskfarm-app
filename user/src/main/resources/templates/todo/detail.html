@@ -161,7 +161,14 @@
       document.getElementById('prioBadge').textContent = '우선순위 ' + todo.priority;
 
       renderStatus(todo.done);
-      renderRewardExp(todo.rewardExp);
+
+      // 완료 상태면: 실제 지급된 경험치를 '확정값'으로 보여주고 AI 추천 버튼을 막는다.
+      // 미완료면: AI 추천값(예상치)을 보여준다.
+      if (todo.done) {
+        renderConfirmedExp(todo.rewardExp);
+      } else {
+        renderRewardExp(todo.rewardExp);
+      }
     }
 
     function renderContent(content) {
@@ -195,11 +202,23 @@
       }
     }
 
+    // 미완료 할일: AI 추천 예상치 표시 (있을 때만)
     function renderRewardExp(rewardExp) {
-    	  if (rewardExp && rewardExp > 0) {
-    	    renderRecommendExp(rewardExp, null);
-    	  }
-    	}
+      if (rewardExp && rewardExp > 0) {
+        renderRecommendExp(rewardExp, null);
+      }
+    }
+
+    // 완료된 할일: 실제 지급된 '확정' 경험치 표시 + AI 추천 버튼 비활성
+    // (완료 후엔 경험치가 확정되어 재책정 불가 → 버튼으로 거짓 기대를 주지 않는다)
+    function renderConfirmedExp(rewardExp) {
+      const xp = rewardExp ?? 0;
+      document.getElementById('expResult').innerHTML = `
+        <div style="font-size:40px;">⭐</div>
+        <div class="fw-bolder fs-2x text-primary mt-2">+${xp} XP</div>
+        <p class="fs-7 text-gray-500 mt-2">완료로 확정된 경험치예요</p>
+      `;
+    }
 
     function formatDate(value) {
       if (!value) {
@@ -334,7 +353,7 @@
       }, 1000);
     }
 
-    // 추천 경험치 화면 표시
+    // 추천 경험치 화면 표시 (미완료 상태에서 예상치)
     function renderRecommendExp(xp, isCache) {
   		let message = '완료 시 받게 될 경험치예요';
 
