@@ -7,6 +7,7 @@ import com.team4.taskfarm.user.domain.auth.repository.AuthUserRepository;
 import com.team4.taskfarm.common.exception.CustomException;
 import com.team4.taskfarm.user.domain.farm.dto.OrderResponse;
 import com.team4.taskfarm.user.domain.farm.dto.OrderResponse.OrderItemDto;
+import com.team4.taskfarm.user.domain.farm.policy.SeedUnlockPolicy;
 import com.team4.taskfarm.user.domain.farm.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,10 +44,7 @@ public class OrderService {
     private static final int QTY_MIN = 3, QTY_MAX = 6; // 요구 수량 범위
     private static final double REWARD_FACTOR = 1.5;   // 보상 계수
 
-    /** 씨앗 해금 레벨 (의사코드 ④ SEED_UNLOCK). tbSeed 에 컬럼이 없어 코드 상수로 관리. */
-    private static final Map<String, Integer> SEED_UNLOCK = Map.of(
-            "radish", 1, "tomato", 1, "corn", 3, "pumpkin", 5
-    );
+    // 씨앗 해금 레벨은 SeedUnlockPolicy로 일원화 (상점 구매와 동일 정책).
 
     private static final String[] VILLAGERS = {"🐰 토끼", "🐻 곰", "🐱 고양이", "🦊 여우", "🐸 개구리"};
 
@@ -136,13 +134,10 @@ public class OrderService {
         return order;
     }
 
-    /** 현재 레벨 해금 작물 (의사코드 ④ unlockedSeeds) */
+    /** 현재 레벨 해금 작물 (의사코드 ④ unlockedSeeds) — 상점과 동일한 SeedUnlockPolicy 사용 */
     private List<TbSeed> unlockedSeeds(int level) {
         return seedRepository.findByIsActiveTrueOrderByIdxSeedAsc().stream()
-                .filter(s -> {
-                    Integer unlock = SEED_UNLOCK.get(s.getCode());
-                    return unlock != null && unlock <= level;
-                })
+                .filter(s -> SeedUnlockPolicy.isUnlocked(s.getCode(), level))
                 .toList();
     }
 
