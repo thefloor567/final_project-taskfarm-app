@@ -95,9 +95,18 @@ public class FarmResponse {
     public static class ThreatDto {
         private String type;       // crow / drought / storm / pest (eventKey)
         private boolean defended;  // 허수아비·온실로 막았는지 (IsDefended)
+        private boolean eaten;     // 제거형 위협(까마귀/폭풍)이 작물을 먹어 밭이 비었는지
 
+        /** 작물이 남아있는 경우 (방어 성공 또는 시듦형 위협). 기존 호출 호환. */
         public static ThreatDto of(String eventKey, boolean defended) {
-            return ThreatDto.builder().type(eventKey).defended(defended).build();
+            return ThreatDto.builder()
+                    .type(eventKey).defended(defended).eaten(false).build();
+        }
+
+        /** 까마귀·폭풍이 작물을 먹어 밭이 빈 경우 — '먹힘' 흔적 표시용. */
+        public static ThreatDto eaten(String eventKey) {
+            return ThreatDto.builder()
+                    .type(eventKey).defended(false).eaten(true).build();
         }
     }
 }

@@ -40,6 +40,9 @@ public class FarmService {
     /** 신규 유저 농장 기본 밭 개수 */
     private static final int DEFAULT_PLOT_COUNT = 6;
 
+    /** 제거형(작물을 없애는) 위협 — 먹히면 밭이 비므로 '먹힘' 흔적을 따로 표시한다. */
+    private static final Set<String> REMOVE_THREATS = Set.of("crow", "storm");
+
     /**
      * 농장 전체 스냅샷 조회.
      * 신규 유저는 농장/밭이 없으므로, 없으면 생성해서 반환한다(서버 권위).
@@ -97,6 +100,8 @@ public class FarmService {
                 .findByIdxFarmEvent(todayEvent.getIdxFarmEvent()).stream()
                 .collect(Collectors.toMap(TbEventTarget::getIdxPlot, t -> t, (a, b) -> a));
 
+        final String eventKey = todayEvent.getEventKey();
+
         // 7) PlotDto 매핑 (위협 처리 후의 최신 상태)
         List<PlotDto> plotDtos = plots.stream()
                 .map(p -> {
@@ -107,12 +112,22 @@ public class FarmService {
 
                     List<EffectDto> effects = effectsByPlot.getOrDefault(p.getIdxPlot(), List.of());
 
-                    // 위협 표시: 그 밭에 작물이 있을 때만 (작물 없으면 위협 뱃지 안 그림).
-                    // 폭풍/까마귀가 작물을 제거한 뒤에도 tbEventTarget 은 남으므로,
-                    // 빈 밭에 유령 위협 뱃지가 뜨는 것을 방지.
+                    // 위협 표시 분기:
+                    //  - 작물 남음 → 방어 성공 or 시듦형 위협 (ThreatDto.of)
+                    //  - 작물 없음 + 방어 못함 + 제거형 위협 → '먹힘' 흔적 (ThreatDto.eaten)
+                    //    (까마귀/폭풍이 작물을 제거해 빈 밭이 된 경우. 유저가 "조용히 사라졌다"고
+                    //     느끼지 않도록, 작물이 없어도 그날 동안 먹힌 흔적을 보여준다.)
                     TbEventTarget tgt = targetByPlot.get(p.getIdxPlot());
-                    ThreatDto threat = (tgt == null || crop == null) ? null
-                            : ThreatDto.of(todayEvent.getEventKey(), tgt.isDefended());
+                    ThreatDto threat;
+                    if (tgt == null) {
+                        threat = null;                                   // 위협 대상 아니었음
+                    } else if (crop != null) {
+                        threat = ThreatDto.of(eventKey, tgt.isDefended()); // 작물 살아있음
+                    } else if (!tgt.isDefended() && REMOVE_THREATS.contains(eventKey)) {
+                        threat = ThreatDto.eaten(eventKey);              // 먹혀서 빈 밭
+                    } else {
+                        threat = null;                                   // 그 외(이례적)는 표시 안 함
+                    }
 
                     return PlotDto.of(p, crop, name, code, effects, threat);
                 })

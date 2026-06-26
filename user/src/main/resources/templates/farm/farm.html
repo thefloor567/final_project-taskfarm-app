@@ -16,42 +16,30 @@
           <div class="card-body py-3">
             <div class="d-flex justify-content-around align-items-center">
               <div class="text-center">
-                <div style="font-size:24px;"
-				     data-bs-toggle="tooltip"
-				     data-bs-html="true"
-				     data-bs-placement="bottom"
-				     title="할 일을 완료하면 모여요<br>작물에 물을 줄 때 사용해요">💧</div>
+                <div style="font-size:24px;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom"
+                  title="할 일을 완료하면 모여요<br>작물에 물을 줄 때 사용해요">💧</div>
                 <div class="fw-bold fs-5 text-gray-900" id="water">0</div>
                 <div class="fs-9 text-gray-500">물방울</div>
               </div>
               <div style="width:1px;height:40px;background:#eee;"></div>
               <div class="text-center">
-                <div style="font-size:24px;"
-				     data-bs-toggle="tooltip"
-				     data-bs-html="true"
-				     data-bs-placement="bottom"
-				     title="작물·주문으로 얻어요<br>상점에서 사용해요">🪙</div>
+                <div style="font-size:24px;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom"
+                  title="작물·주문으로 얻어요<br>상점에서 사용해요">🪙</div>
                 <div class="fw-bold fs-5 text-gray-900" id="coin">0</div>
                 <div class="fs-9 text-gray-500">코인</div>
               </div>
               <div style="width:1px;height:40px;background:#eee;"></div>
               <div class="text-center">
-                <div style="font-size:24px;"
-				     data-bs-toggle="tooltip"
-				     data-bs-html="true"
-				     data-bs-placement="bottom"
-				     title="수확해서 모은 작물이에요<br>주민 주문에 사용해요">🌾</div>
+                <div style="font-size:24px;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom"
+                  title="수확해서 모은 작물이에요<br>주민 주문에 사용해요">🌾</div>
                 <div class="fw-bold fs-5 text-gray-900" id="cropCount">0</div>
                 <div class="fs-9 text-gray-500">작물</div>
               </div>
               <div style="width:1px;height:40px;background:#eee;"></div>
               <!-- 시드스트릭: 연속 완료일. 높을수록 좋은 이벤트 확률↑ -->
               <div class="text-center">
-                <div style="font-size:24px;"
-				     data-bs-toggle="tooltip"
-				     data-bs-html="true"
-				     data-bs-placement="bottom"
-				     title="할 일 연속 완료 일수예요<br>높을수록 좋은 이벤트가 나와요">🔥</div>
+                <div style="font-size:24px;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom"
+                  title="할 일 연속 완료 일수예요<br>높을수록 좋은 이벤트가 나와요">🔥</div>
                 <div class="fw-bold fs-5 text-gray-900" id="streak">0</div>
                 <div class="fs-9 text-gray-500">스트릭</div>
               </div>
@@ -139,11 +127,16 @@
     const STATUS_EMOJI = { growing: '🌱', ready: '🍅', withered: '🥀' };
     const CROP_EMOJI = { radish: '🥗', tomato: '🍅', corn: '🌽', pumpkin: '🎃', carrot: '🥕', strawberry: '🍓' };
     const EFFECT_BADGE = {
-      scarecrow:  { emoji: '🧑\u200d🌾', label: '허수아비' },
-      greenhouse: { emoji: '🏡',         label: '온실' },
-      fertilizer: { emoji: '💩',         label: '비료' }
+      scarecrow: { emoji: '🧑\u200d🌾', label: '허수아비' },
+      greenhouse: { emoji: '🏡', label: '온실' },
+      fertilizer: { emoji: '💩', label: '비료' }
     };
+    // 위협 종류별 이모지
     const THREAT_BADGE = { crow: '🐦‍⬛', drought: '☀️', storm: '🌪️', pest: '🐛' };
+    // 위협 종류별 방어 수단 이모지 (막았을 때 표시)
+    const DEFENSE_BADGE = { crow: '🧑\u200d🌾', pest: '🧑\u200d🌾', drought: '🏡' };
+    // 위협 종류별 한국어 이름 (알림 문구용)
+    const THREAT_NAME = { crow: '까마귀', drought: '가뭄', storm: '폭풍', pest: '해충' };
 
     document.addEventListener('DOMContentLoaded', function () { loadFarm(); });
 
@@ -218,7 +211,17 @@
         const name = p.cropName || '작물';
         let inner = '', bg = '#F5F8FA', action = '';
 
-        if (p.status === 'empty') {
+        // 까마귀/폭풍에 먹힌 빈 밭: 흔적 표시 + 누르면 안내
+        const eaten = p.threat && p.threat.eaten;
+
+        if (eaten) {
+          const tname = THREAT_NAME[p.threat.type] || '재해';
+          const temoji = THREAT_BADGE[p.threat.type] || '⚠️';
+          inner = `<div style="font-size:32px;">${temoji}</div>
+                     <div class="fs-9 text-danger fw-semibold">${tname}가 먹었어요</div>`;
+          bg = '#FFF5F8';
+          action = `eatenInfo('${p.threat.type}')`;
+        } else if (p.status === 'empty') {
           inner = '<div style="font-size:32px;opacity:.3;">➕</div><div class="fs-9 text-gray-400">씨앗 심기</div>';
           action = `plantSeed(${p.plotId})`;
         } else if (p.status === 'growing') {
@@ -245,11 +248,16 @@
           return `<span class="badge badge-sm badge-light-primary" title="${b.label}">${b.emoji}${uses}</span>`;
         }).join('');
 
+        // 위협 뱃지: 먹힘 / 막음(방어 수단 이모지) / 위협(작물 남음)
         let threatTag = '', threatBorder = '';
         if (p.threat) {
           const temoji = THREAT_BADGE[p.threat.type] || '⚠️';
-          if (p.threat.defended) {
-            threatTag = `<span class="badge badge-sm badge-light-success">${temoji} 방어</span>`;
+          if (p.threat.eaten) {
+            threatTag = `<span class="badge badge-sm badge-light-danger">${temoji} 먹힘</span>`;
+            threatBorder = 'border:2px dashed var(--bs-danger);';
+          } else if (p.threat.defended) {
+            const demoji = DEFENSE_BADGE[p.threat.type] || '🛡️';
+            threatTag = `<span class="badge badge-sm badge-light-success">${demoji} 막음</span>`;
             threatBorder = 'border:2px solid var(--bs-success);';
           } else {
             threatTag = `<span class="badge badge-sm badge-light-danger">${temoji} 위협</span>`;
@@ -269,6 +277,26 @@
       });
     }
 
+    // 먹힌 밭을 눌렀을 때 안내
+    function eatenInfo(type) {
+      const tname = THREAT_NAME[type] || '재해';
+      const temoji = THREAT_BADGE[type] || '⚠️';
+      Swal.fire({
+        html: `${temoji} <b>${tname}가 작물을 먹었어요</b><br>
+               <span style="font-size:13px;color:#888;">${defenseHint(type)}</span>`,
+        icon: 'info', buttonsStyling: false, confirmButtonText: '확인',
+        customClass: { confirmButton: 'btn btn-primary' }
+      });
+    }
+
+    function defenseHint(type) {
+      if (type === 'crow') return '허수아비를 설치하면 까마귀를 막을 수 있어요';
+      if (type === 'storm') return '폭풍은 막을 수 없어요';
+      if (type === 'drought') return '온실을 설치하면 가뭄을 막을 수 있어요';
+      if (type === 'pest') return '허수아비를 설치하면 해충을 막을 수 있어요';
+      return '도구를 설치해 작물을 보호하세요';
+    }
+
     async function farmAction(url, method = 'POST', body = null) {
       try {
         const opt = { method, headers: { 'Accept': 'application/json' } };
@@ -279,17 +307,24 @@
         const res = await fetch(url, opt);
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.result === false) {
-          throw new Error(data.message || '요청에 실패했어요.');
+          const err = new Error(data.message || '요청에 실패했어요.');
+          err.serverMessage = data.message;
+          throw err;
         }
         return data;
       } catch (e) {
-        Swal.fire({
-          text: e.message, icon: 'warning',
-          buttonsStyling: false, confirmButtonText: '확인',
-          customClass: { confirmButton: 'btn btn-primary' }
-        });
-        return null;
+        // 호출부에서 따로 처리하고 싶을 수 있으니, 기본 경고는 띄우되 에러도 던질 수 있게
+        throw e;
       }
+    }
+
+    // 공통 경고 표시
+    function showWarn(msg) {
+      Swal.fire({
+        text: msg, icon: 'warning',
+        buttonsStyling: false, confirmButtonText: '확인',
+        customClass: { confirmButton: 'btn btn-primary' }
+      });
     }
 
     async function plantSeed(plotId) {
@@ -299,15 +334,19 @@
         const body = await res.json();
         seeds = (body.data ?? body) || [];
       } catch (e) {
-        return Swal.fire({ text: '씨앗 정보를 불러오지 못했어요.', icon: 'error',
+        return Swal.fire({
+          text: '씨앗 정보를 불러오지 못했어요.', icon: 'error',
           buttonsStyling: false, confirmButtonText: '확인',
-          customClass: { confirmButton: 'btn btn-primary' } });
+          customClass: { confirmButton: 'btn btn-primary' }
+        });
       }
 
       if (!seeds.length) {
-        return Swal.fire({ text: '보유한 씨앗이 없어요. 씨앗 상점에서 먼저 구매하세요 🌱',
+        return Swal.fire({
+          text: '보유한 씨앗이 없어요. 씨앗 상점에서 먼저 구매하세요 🌱',
           icon: 'info', buttonsStyling: false, confirmButtonText: '확인',
-          customClass: { confirmButton: 'btn btn-primary' } });
+          customClass: { confirmButton: 'btn btn-primary' }
+        });
       }
 
       const optionsHtml = seeds.map(s =>
@@ -337,28 +376,60 @@
       });
       if (!seedId) return;
 
-      const ok = await farmAction(`/api/farm/plots/${plotId}/plant`, 'POST', { seedId: Number(seedId) });
-      if (ok) loadFarm();
+      try {
+        await farmAction(`/api/farm/plots/${plotId}/plant`, 'POST', { seedId: Number(seedId) });
+        loadFarm();
+      } catch (e) {
+        showWarn(e.message);
+      }
     }
 
     async function waterPlot(plotId) {
-      const ok = await farmAction(`/api/farm/plots/${plotId}/water`, 'POST');
-      if (ok) loadFarm();
+      try {
+        await farmAction(`/api/farm/plots/${plotId}/water`, 'POST');
+        loadFarm();
+      } catch (e) {
+        showWarn(e.message);
+      }
     }
 
     async function harvestPlot(plotId) {
-      const ok = await farmAction(`/api/farm/plots/${plotId}/harvest`, 'POST');
-      if (ok) {
-        Swal.fire({ text: '수확 완료! 🌾', icon: 'success',
+      // 수확하려는 밭의 현재 상태를 미리 파악 (먹힘 판별용)
+      const target = plots.find(p => p.plotId === plotId);
+      try {
+        await farmAction(`/api/farm/plots/${plotId}/harvest`, 'POST');
+        Swal.fire({
+          text: '수확 완료! 🌾', icon: 'success',
           buttonsStyling: false, confirmButtonText: '확인',
-          customClass: { confirmButton: 'btn btn-primary' } });
+          customClass: { confirmButton: 'btn btn-primary' }
+        });
+        loadFarm();
+      } catch (e) {
+        // 수확 실패 — 그 사이 위협(까마귀 등)에 먹혔으면 그에 맞는 안내
+        if (target && target.threat && (target.threat.eaten || !target.threat.defended)) {
+          const type = target.threat.type;
+          const tname = THREAT_NAME[type] || '재해';
+          const temoji = THREAT_BADGE[type] || '⚠️';
+          Swal.fire({
+            html: `${temoji} <b>${tname}가 먹었어요!</b><br>
+                   <span style="font-size:13px;color:#888;">수확하려던 작물을 ${tname}가 가져갔어요</span>`,
+            icon: 'warning', buttonsStyling: false, confirmButtonText: '확인',
+            customClass: { confirmButton: 'btn btn-primary' }
+          });
+        } else {
+          showWarn(e.message);
+        }
         loadFarm();
       }
     }
 
     async function removeCrop(plotId) {
-      const ok = await farmAction(`/api/farm/plots/${plotId}/crop`, 'DELETE');
-      if (ok) loadFarm();
+      try {
+        await farmAction(`/api/farm/plots/${plotId}/crop`, 'DELETE');
+        loadFarm();
+      } catch (e) {
+        showWarn(e.message);
+      }
     }
   </script>
 </body>

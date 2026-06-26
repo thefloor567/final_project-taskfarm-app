@@ -123,11 +123,6 @@
         const col = document.createElement('div');
         col.className = 'col-4';
 
-        const actionHint = currentTab === 'seeds'
-          ? '<div class="fs-9 text-primary mt-1">밭에 심기</div>'
-          : '<div class="fs-9 text-warning mt-1">주문 이행</div>';
-        const goTo = currentTab === 'seeds' ? '/farm' : '/orders';
-
         col.innerHTML = `
             <div class="card shadow-sm" style="cursor:pointer;" onclick="location.href='${goTo}'">
                 <div class="card-body text-center py-4 px-1 position-relative">
