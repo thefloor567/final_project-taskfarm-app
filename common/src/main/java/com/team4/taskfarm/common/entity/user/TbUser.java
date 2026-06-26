@@ -111,6 +111,14 @@ public class TbUser extends BaseEntity {
         this.status = Status.SUSPENDED;
     }
 
+    public void suspend() {
+        this.status = Status.SUSPENDED;
+    }
+
+    public void activate() {
+        this.status = Status.ACTIVE;
+    }
+
     // ───────── 경험치/레벨 (레벨디자인 ①②) ─────────
 
     /** cumExp(n) = 25 * n * (n-1) — n레벨 도달에 필요한 누적 Exp */

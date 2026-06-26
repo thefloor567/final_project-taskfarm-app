@@ -29,4 +29,16 @@ public class AdminUserApiController extends AdminBaseController {
     public ResponseEntity<ApiResponse<UserDetailResponse>> getUserDetail(@PathVariable Long userId) {
         return ok(adminUserService.getUserDetail(userId));
     }
+
+    @PatchMapping("/{userId}/suspend")
+    public ResponseEntity<ApiResponse<Void>> suspendUser(@PathVariable Long userId) {
+        adminUserService.suspendUser(userId);
+        return ok();
+    }
+
+    @PatchMapping("/{userId}/activate")
+    public ResponseEntity<ApiResponse<Void>> activateUser(@PathVariable Long userId) {
+        adminUserService.activateUser(userId);
+        return ok();
+    }
 }

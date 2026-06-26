@@ -11,7 +11,8 @@ public class UserListResponse {
     private final String email;
     private final int level;
     private final long doneCount;
-    private final String joinDate;   // yyyy-MM-dd
+    private final String joinDate;
+    private final String status;
 
     public UserListResponse(UserListRow r) {
         this.userId = r.getUserId();
@@ -22,5 +23,6 @@ public class UserListResponse {
         this.joinDate = r.getJoinDate() != null
                 ? r.getJoinDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                 : "-";
+        this.status = r.getStatus().name();
     }
 }
