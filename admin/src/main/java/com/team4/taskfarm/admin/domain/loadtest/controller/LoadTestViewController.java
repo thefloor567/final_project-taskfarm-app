@@ -10,6 +10,6 @@ public class LoadTestViewController {
     @GetMapping("/loadtest")
     public String loadtest(Model model) {
         model.addAttribute("active", "loadtest");
-        return "loadtest";
+        return "loadtest/loadtest";
     }
 }
