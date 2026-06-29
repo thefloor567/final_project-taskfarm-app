@@ -7,8 +7,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class MfaConfirmRequest {
-
+public class MfaResetConfirmRequest {
     @NotBlank
     private String secret;
 
