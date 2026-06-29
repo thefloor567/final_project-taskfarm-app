@@ -1,6 +1,7 @@
 package com.team4.taskfarm.admin.domain.loadtest.scenario;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.team4.taskfarm.common.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
@@ -27,15 +28,15 @@ public class LoginScenario implements LoadScenario {
   public void runOnce() throws Exception {
     String baseUrl = get("LOADTEST_USER_BASE_URL", "http://taskfarm-user:80");
     String email = get("LOADTEST_LOGIN_EMAIL", "");
-    String loginPassword = get("LOADTEST_LOGIN_PASSWORD", "");
+    String loginSecret = get("LOADTEST_LOGIN_PASSWORD", "");
 
-    if (email.isBlank() || loginPassword.isBlank()) {
-      throw new IllegalStateException("LOADTEST_LOGIN_EMAIL / LOADTEST_LOGIN_PASSWORD 설정이 필요합니다.");
+    if (email.isBlank() || loginSecret.isBlank()) {
+      throw CustomException.badRequest("LOADTEST_LOGIN_EMAIL / LOADTEST_LOGIN_PASSWORD 설정이 필요합니다.");
     }
 
     String body = objectMapper.writeValueAsString(Map.of(
         "email", email,
-        "password", loginPassword));
+        "password", loginSecret));
 
     HttpRequest request = HttpRequest.newBuilder()
         .uri(URI.create(baseUrl + "/api/auth/login"))
@@ -47,7 +48,7 @@ public class LoginScenario implements LoadScenario {
     HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
     if (response.statusCode() < 200 || response.statusCode() >= 300) {
-      throw new IllegalStateException("LOGIN 시나리오 실패. status=" + response.statusCode());
+      throw CustomException.badRequest("LOGIN 시나리오 실패. status=" + response.statusCode());
     }
   }
 

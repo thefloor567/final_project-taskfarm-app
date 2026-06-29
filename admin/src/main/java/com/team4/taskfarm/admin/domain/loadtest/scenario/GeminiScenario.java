@@ -1,6 +1,7 @@
 package com.team4.taskfarm.admin.domain.loadtest.scenario;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.team4.taskfarm.common.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -52,9 +53,15 @@ public class GeminiScenario implements LoadScenario {
   }
 
   private Long findAnyUserId() {
-    return jdbcTemplate.queryForObject(
+    Long userId = jdbcTemplate.query(
         "SELECT Idx_User FROM tbUser WHERE DeleteDate IS NULL AND Status = 'ACTIVE' ORDER BY Idx_User LIMIT 1",
-        Long.class);
+        rs -> rs.next() ? rs.getLong(1) : null);
+
+    if (userId == null) {
+      throw CustomException.badRequest("GEMINI 시나리오 실행용 활성 유저를 찾을 수 없습니다.");
+    }
+
+    return userId;
   }
 
   private Long findAnyTodoId(Long userId) {
@@ -91,7 +98,7 @@ public class GeminiScenario implements LoadScenario {
 
     void rpush(String key, String value) throws IOException {
       if (host == null || host.isBlank()) {
-        throw new IllegalStateException("REDIS_HOST가 설정되어 있지 않습니다.");
+        throw CustomException.badRequest("REDIS_HOST가 설정되어 있지 않습니다.");
       }
 
       try (Socket socket = createSocket();
@@ -136,12 +143,12 @@ public class GeminiScenario implements LoadScenario {
     private void readReply(InputStream in) throws IOException {
       int first = in.read();
       if (first == -1) {
-        throw new EOFException("Redis 응답이 없습니다.");
+        throw CustomException.badRequest("Redis 응답이 없습니다.");
       }
 
       String line = readLine(in);
       if (first == '-') {
-        throw new IOException("Redis error: " + line);
+        throw CustomException.badRequest("Redis 응답 오류: " + line);
       }
     }
 
@@ -159,7 +166,7 @@ public class GeminiScenario implements LoadScenario {
         prev = curr;
       }
 
-      throw new EOFException("Redis 응답 라인 읽기 실패");
+      throw CustomException.badRequest("Redis 응답 라인 읽기 실패");
     }
   }
 }
