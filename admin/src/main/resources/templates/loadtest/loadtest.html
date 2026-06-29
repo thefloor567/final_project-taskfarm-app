@@ -215,6 +215,7 @@
         currentRunId = data.data.runId;   // 백엔드가 발급한 실행 ID
         resetCharts();
         setRunning(true);
+        await fetchStatus();
         startPolling();
 
       } catch (e) {
@@ -236,7 +237,7 @@
     // ── 폴링 (1초마다 진행 상황 조회) ────────────────────
     function startPolling() {
       stopPolling();
-      pollTimer = setInterval(fetchStatus, 1000);
+      pollTimer = setInterval(fetchStatus, 300);
       fetchStatus();
     }
     function stopPolling() {
@@ -344,6 +345,7 @@
           { name: '파드 수',   data: [] }
         ],
         chart: { type: 'line', height: 340, animations: { easing: 'linear', dynamicAnimation: { speed: 300 } }, toolbar: { show: false } },
+        markers: { size: 4 },
         colors: ['#3699FF', '#FFA800', '#0BB783'],
         stroke: { curve: 'smooth', width: [3, 3, 4] },
         xaxis: { type: 'numeric', labels: { show: false }, title: { text: '경과(초)' } },
