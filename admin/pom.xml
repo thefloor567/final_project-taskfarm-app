@@ -19,8 +19,21 @@
     <name>taskfarm-admin</name>
     <description>어드민앱 - 통계/Gemini비용/정책관리</description>
 
+    <!-- [MFA] AWS SDK v2 BOM: kms 등 aws 모듈 버전을 한 곳에서 통일 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>2.31.6</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
-        <!-- ⭐ 공용 창고 가져오기 -->
+        <!-- 공용 창고 가져오기 -->
         <dependency>
             <groupId>com.team4.taskfarm</groupId>
             <artifactId>taskfarm-common</artifactId>
@@ -86,6 +99,19 @@
     		<artifactId>kubernetes-client</artifactId>
     		<version>6.13.4</version>
 		</dependency>
+
+        <!-- [MFA] TOTP: 시크릿 생성 + OTP 6자리 검증 + QR 이미지(데이터URI) 생성 -->
+        <dependency>
+            <groupId>dev.samstevens.totp</groupId>
+            <artifactId>totp</artifactId>
+            <version>1.7.1</version>
+        </dependency>
+
+        <!-- [MFA] AWS KMS: MFA 시크릿 암복호화 (버전은 위 BOM이 관리) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>kms</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
