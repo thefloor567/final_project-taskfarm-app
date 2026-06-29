@@ -49,7 +49,7 @@ management:
       probes:
         enabled: true
     prometheus:
-      access: read_only
+      access: read-only
   prometheus:
     metrics:
       export:
