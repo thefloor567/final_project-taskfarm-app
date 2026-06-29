@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('보안 설정')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('security')}"></div>
+
+    <div class="admin-content">
+
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">보안 설정</h1>
+      <p class="text-gray-500 fs-6 mb-6">관리자 2단계 인증(MFA) 관리</p>
+
+      <div class="row g-4">
+        <div class="col-xl-7">
+          <div class="card shadow-sm">
+            <div class="card-header">
+              <h3 class="card-title fs-5">2단계 인증 (Google OTP)</h3>
+            </div>
+            <div class="card-body d-flex flex-column gap-4">
+
+              <!-- 현재 상태 -->
+              <div class="d-flex align-items-center justify-content-between p-4 rounded" style="background:#f8f9fa;">
+                <div>
+                  <div class="fw-bold fs-6 text-gray-900">현재 상태</div>
+                  <div class="fs-7 text-gray-500 mt-1">구글 Authenticator 앱 기반 OTP</div>
+                </div>
+                <span id="mfaStatusBadge" class="badge badge-light fs-7 px-4 py-2">확인 중...</span>
+              </div>
+
+              <!-- 액션 버튼 -->
+              <div class="d-flex gap-3">
+                <button type="button" class="btn btn-primary" onclick="startReset()">
+                  <i class="ki-duotone ki-arrows-circle fs-4 me-1"><span class="path1"></span><span
+                      class="path2"></span></i>
+                  재등록 (기기 변경/분실 시)
+                </button>
+                <button type="button" class="btn btn-light-danger" onclick="disableMfa()">
+                  <i class="ki-duotone ki-cross-circle fs-4 me-1"><span class="path1"></span><span
+                      class="path2"></span></i>
+                  MFA 해제
+                </button>
+              </div>
+
+              <!-- 재등록 QR 영역 (초기 숨김) -->
+              <div id="resetArea" style="display:none;" class="border-top pt-4">
+                <h4 class="fw-bold fs-6 mb-3">새 OTP 등록</h4>
+                <p class="fs-7 text-gray-500 mb-3">
+                  구글 OTP 앱에서 기존 항목을 삭제한 뒤, 아래 QR을 새로 스캔하세요.
+                </p>
+                <div class="d-flex gap-5 align-items-start flex-wrap">
+                  <div class="text-center">
+                    <img id="resetQr" src="" alt="QR" style="width:180px;height:180px;" class="border rounded">
+                    <div class="fs-8 text-gray-400 mt-2">수동 키</div>
+                    <div id="resetManualKey" class="fw-bold fs-8 text-gray-700"
+                      style="word-break:break-all;max-width:180px;"></div>
+                  </div>
+                  <div class="flex-grow-1" style="max-width:240px;">
+                    <label class="form-label fw-semibold fs-7">앱에 표시된 6자리</label>
+                    <input type="text" id="resetCode" class="form-control form-control-lg text-center"
+                      inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:6px;font-size:22px;"
+                      onkeyup="if(event.key==='Enter') confirmReset()">
+                    <button type="button" class="btn btn-primary w-100 mt-3" onclick="confirmReset()">
+                      등록 완료
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- 안내 -->
+        <div class="col-xl-5">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">안내</h3>
+            </div>
+            <div class="card-body fs-7 text-gray-600 d-flex flex-column gap-3">
+              <div>🔐 <b>강제 적용</b> — 모든 관리자는 MFA 등록이 필수이며, 로그인 시 OTP 입력이 요구됩니다.</div>
+              <div>📱 <b>기기 변경/분실</b> — 새 기기로 바꿨다면 "재등록"으로 새 QR을 발급받아 등록하세요.</div>
+              <div>🔒 <b>시크릿 보호</b> — OTP 시크릿은 AWS KMS로 암호화되어 저장됩니다.</div>
+              <div>⚠️ <b>해제 주의</b> — 해제 후 다음 로그인 시 다시 등록을 요구받습니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    let resetSecret = '';
+
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    function swalErr(msg) {
+      Swal.fire({
+        text: msg || "오류가 발생했습니다.", icon: "error",
+        buttonsStyling: false, confirmButtonText: "확인",
+        customClass: { confirmButton: "btn btn-danger" }
+      });
+    }
+    function swalOk(msg, cb) {
+      Swal.fire({
+        text: msg, icon: "success",
+        buttonsStyling: false, confirmButtonText: "확인",
+        customClass: { confirmButton: "btn btn-primary" }
+      }).then(cb || function () { });
+    }
+
+    // 상태 표시 (MfaEnabled 여부는 등록돼 있으면 로그인 자체가 됐다는 뜻이므로 등록됨으로 간주)
+    document.addEventListener('DOMContentLoaded', function () {
+      const badge = document.getElementById('mfaStatusBadge');
+      badge.textContent = '등록됨 ✓';
+      badge.className = 'badge badge-light-success fs-7 px-4 py-2';
+    });
+
+    // 재등록 1단계: 기존 해제 + 새 QR 발급
+    function startReset() {
+      Swal.fire({
+        text: "현재 MFA를 해제하고 새로 등록합니다. 계속할까요?",
+        icon: "warning", showCancelButton: true,
+        buttonsStyling: false, confirmButtonText: "계속", cancelButtonText: "취소",
+        customClass: { confirmButton: "btn btn-primary", cancelButton: "btn btn-light" }
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetch('/admin/api/mfa/reset/setup', { method: 'POST', credentials: 'include' })
+          .then(res => res.json())
+          .then(res => {
+            if (!res.result) return swalErr(res.message || "재등록 시작 실패");
+            resetSecret = res.data.secret;
+            document.getElementById('resetQr').src = res.data.qrDataUri;
+            document.getElementById('resetManualKey').textContent = res.data.manualKey;
+            document.getElementById('resetArea').style.display = '';
+            document.getElementById('resetCode').focus();
+          })
+          .catch(err => { console.error(err); swalErr(); });
+      });
+    }
+
+    // 재등록 2단계: OTP 검증 후 저장
+    function confirmReset() {
+      const code = document.getElementById('resetCode').value.trim();
+      if (!/^\d{6}$/.test(code)) return swalErr("6자리 숫자를 입력하세요.");
+      fetch('/admin/api/mfa/reset/confirm', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ secret: resetSecret, code })
+      })
+        .then(res => res.json())
+        .then(res => {
+          if (!res.result) return swalErr(res.message || "등록 실패");
+          swalOk("MFA 재등록이 완료되었습니다.", () => location.reload());
+        })
+        .catch(err => { console.error(err); swalErr(); });
+    }
+
+    // 해제
+    function disableMfa() {
+      Swal.fire({
+        text: "MFA를 해제하시겠습니까? 다음 로그인 시 재등록이 필요합니다.",
+        icon: "warning", showCancelButton: true,
+        buttonsStyling: false, confirmButtonText: "해제", cancelButtonText: "취소",
+        customClass: { confirmButton: "btn btn-danger", cancelButton: "btn btn-light" }
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetch('/admin/api/mfa/disable', { method: 'POST', credentials: 'include' })
+          .then(res => res.json())
+          .then(res => {
+            if (!res.result) return swalErr(res.message || "해제 실패");
+            swalOk("MFA가 해제되었습니다.", () => { adminLogout(); });
+          })
+          .catch(err => { console.error(err); swalErr(); });
+      });
+    }
+  </script>
+</body>
+
+</html>
