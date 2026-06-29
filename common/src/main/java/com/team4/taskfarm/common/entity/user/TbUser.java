@@ -61,6 +61,18 @@ public class TbUser extends BaseEntity {
     @Column(name = "DeleteDate")
     private LocalDateTime deleteDate;
 
+    // ───────── [MFA] 어드민 2차 인증 (TOTP) ─────────
+    // ⚠️ tbUser는 user앱과 공유 테이블. MFA는 어드민(ROLE_ADMIN)만 사용 →
+    //    일반 유저 행에서는 둘 다 null/false로 비어 있음(정상).
+    // mfaSecret: KMS로 암호화된 TOTP 시크릿(Base64 암호문). 평문 저장 금지.
+    //   - 평문 시크릿(32자 내외)이 KMS 암호화 후 Base64로 늘어남 → 넉넉히 512.
+    @Column(name = "MfaSecret", length = 512)
+    private String mfaSecret;
+
+    // mfaEnabled: 등록 완료 여부. true여야 로그인 시 OTP 단계를 요구.
+    @Column(name = "MfaEnabled", nullable = false)
+    private boolean mfaEnabled = false;
+
     public enum Role { ROLE_USER, ROLE_ADMIN }
     public enum Status { ACTIVE, SUSPENDED }
 
@@ -117,6 +129,31 @@ public class TbUser extends BaseEntity {
 
     public void activate() {
         this.status = Status.ACTIVE;
+    }
+
+    // ───────── [MFA] 상태 변경 메서드 ─────────
+
+    /**
+     * MFA 등록 확정. 등록 플로우에서 OTP 6자리 검증까지 통과한 뒤 호출.
+     * @param encryptedSecret KMS로 암호화된 시크릿(Base64). 평문 넣지 말 것.
+     */
+    public void enableMfa(String encryptedSecret) {
+        this.mfaSecret = encryptedSecret;
+        this.mfaEnabled = true;
+    }
+
+    /**
+     * MFA 해제(기기 분실 복구 등). 시크릿 제거 + 비활성화.
+     * 다른 어드민이 강제 해제하거나, 본인 재등록 전에 호출.
+     */
+    public void disableMfa() {
+        this.mfaSecret = null;
+        this.mfaEnabled = false;
+    }
+
+    /** 로그인 시 OTP 단계를 요구해야 하는지. (등록 완료 + 시크릿 존재) */
+    public boolean requiresMfa() {
+        return this.mfaEnabled && this.mfaSecret != null;
     }
 
     // ───────── 경험치/레벨 (레벨디자인 ①②) ─────────
