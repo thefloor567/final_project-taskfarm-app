@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/head :: head('부하 시뮬레이터')}"></head>
+
+<body>
+  <div class="admin-wrap">
+
+    <div th:replace="~{fragments/sidebar :: sidebar('loadtest')}"></div>
+
+    <div class="admin-content">
+
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">부하 시뮬레이터</h1>
+      <p class="text-gray-500 fs-6 mb-6">시나리오별 동시 부하를 발생시키고, 처리량·지연·오토스케일링(KEDA)을 실시간 관측합니다</p>
+
+      <!-- ===================== 실행 패널 ===================== -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h3 class="card-title fs-5">⚙️ 부하 시나리오 실행</h3>
+        </div>
+        <div class="card-body">
+          <div class="row g-4 align-items-end">
+
+            <!-- 시나리오 선택 -->
+            <div class="col-md-4">
+              <label class="form-label fw-semibold fs-7 text-gray-700">시나리오</label>
+              <select id="scenario" class="form-select">
+                <option value="GEMINI">✨ AI 추천 큐 투입 (Gemini)</option>
+                <option value="LOGIN">🔑 로그인</option>
+                <option value="SCHEDULER">⏰ 이벤트 스케줄러</option>
+                <option value="DB_LOCK">🔒 DB 락 경합</option>
+              </select>
+              <div class="fs-9 text-gray-500 mt-1" id="scenarioHint">
+                AI 추천 작업을 큐(ai:recommend:queue)에 쌓아 KEDA 스케일아웃을 유발합니다
+              </div>
+            </div>
+
+            <!-- 동시 수 -->
+            <div class="col-md-3">
+              <label class="form-label fw-semibold fs-7 text-gray-700">동시 실행 수 (VU)</label>
+              <input type="number" id="concurrency" class="form-control" value="10" min="1" max="500">
+            </div>
+
+            <!-- 반복/건수 -->
+            <div class="col-md-3">
+              <label class="form-label fw-semibold fs-7 text-gray-700">총 요청 수</label>
+              <input type="number" id="totalRequests" class="form-control" value="100" min="1" max="10000">
+            </div>
+
+            <!-- 실행 버튼 -->
+            <div class="col-md-2">
+              <button id="runBtn" class="btn btn-primary w-100" onclick="startLoadTest()">
+                ▶ 실행
+              </button>
+              <button id="stopBtn" class="btn btn-light-danger w-100 d-none" onclick="stopLoadTest()">
+                ■ 중지
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== 실시간 지표 카드 ===================== -->
+      <div class="row g-4 mb-4">
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">처리 완료</div>
+                  <div class="fw-bolder fs-2 text-gray-900 mt-1" id="mProcessed">0</div>
+                </div>
+                <span style="font-size:28px;">📊</span>
+              </div>
+              <div class="fs-8 text-gray-400 mt-2"><span id="mTotal">0</span>건 중</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">성공률</div>
+                  <div class="fw-bolder fs-2 text-success mt-1" id="mSuccessRate">0%</div>
+                </div>
+                <span style="font-size:28px;">✅</span>
+              </div>
+              <div class="fs-8 text-gray-400 mt-2">실패 <span id="mFailed">0</span>건</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">p95 지연</div>
+                  <div class="fw-bolder fs-2 text-warning mt-1" id="mP95">0<span class="fs-6">ms</span></div>
+                </div>
+                <span style="font-size:28px;">⏱️</span>
+              </div>
+              <div class="fs-8 text-gray-400 mt-2">평균 <span id="mAvg">0</span>ms</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fs-7 text-gray-500">파드 수 (KEDA)</div>
+                  <div class="fw-bolder fs-2 text-primary mt-1" id="mPods">1</div>
+                </div>
+                <span style="font-size:28px;">🚀</span>
+              </div>
+              <div class="fs-8 text-gray-400 mt-2">큐 길이 <span id="mQueue">0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 상태 배너 -->
+      <div id="statusBanner" class="card shadow-sm mb-4 border-0 d-none" style="background:#E8FFF3;">
+        <div class="card-body py-3">
+          <div class="d-flex align-items-center gap-3">
+            <span style="font-size:28px;" id="statusIcon">⏳</span>
+            <div>
+              <div class="fw-bold fs-6 text-gray-900" id="statusTitle">실행 중...</div>
+              <div class="fs-8 text-gray-600" id="statusDesc">부하를 발생시키고 있습니다</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== 실시간 차트 ===================== -->
+      <div class="row g-4">
+        <!-- 처리량 + 파드 수 (시계열) -->
+        <div class="col-xl-8">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">처리량 · 큐 길이 · 파드 수 (실시간)</h3>
+            </div>
+            <div class="card-body">
+              <div id="timeseriesChart"></div>
+            </div>
+          </div>
+        </div>
+        <!-- 성공/실패 도넛 -->
+        <div class="col-xl-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <h3 class="card-title fs-5">성공 / 실패</h3>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+              <div id="resultDonut"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script th:src="@{/plugins/global/plugins.bundle.js}"></script>
+  <script th:src="@{/js/scripts.bundle.js}"></script>
+  <script>
+    function adminLogout() {
+      document.cookie = 'token=; path=/admin; max-age=0';
+      location.href = '/admin/';
+    }
+
+    // 시나리오별 안내 문구
+    const SCENARIO_HINT = {
+      GEMINI:    'AI 추천 작업을 큐(ai:recommend:queue)에 쌓아 KEDA 스케일아웃을 유발합니다',
+      LOGIN:     '로그인 처리를 동시에 실행해 인증·DB 부하를 측정합니다',
+      SCHEDULER: '이벤트 스케줄러 작업을 동시에 트리거해 배치 처리 부하를 측정합니다',
+      DB_LOCK:   '동일 자원에 동시 접근시켜 DB 락 경합·동시성 처리를 측정합니다'
+    };
+
+    // ── 상태 ─────────────────────────────────────────────
+    let currentRunId = null;   // 백엔드가 발급하는 실행 ID
+    let pollTimer = null;
+    let tsChart = null, donutChart = null;
+    const tsData = { processed: [], queue: [], pods: [] };  // 시계열 누적
+    let tick = 0;
+
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('scenario').addEventListener('change', e => {
+        document.getElementById('scenarioHint').textContent = SCENARIO_HINT[e.target.value] || '';
+      });
+      initCharts();
+    });
+
+    // ── 실행 ─────────────────────────────────────────────
+    async function startLoadTest() {
+      const body = {
+        scenario:      document.getElementById('scenario').value,
+        concurrency:   Number(document.getElementById('concurrency').value),
+        totalRequests: Number(document.getElementById('totalRequests').value)
+      };
+
+      try {
+        const res = await fetch('/admin/api/loadtest/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok || data.result === false) {
+          throw new Error(data.message || '부하 테스트 시작 실패');
+        }
+
+        currentRunId = data.data.runId;   // 백엔드가 발급한 실행 ID
+        resetCharts();
+        setRunning(true);
+        startPolling();
+
+      } catch (e) {
+        Swal.fire({ text: e.message, icon: 'error', buttonsStyling: false,
+          confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' } });
+      }
+    }
+
+    // ── 중지 ─────────────────────────────────────────────
+    async function stopLoadTest() {
+      if (!currentRunId) return;
+      try {
+        await fetch(`/admin/api/loadtest/${currentRunId}/stop`, { method: 'POST' });
+      } catch (e) { console.error(e); }
+      stopPolling();
+      setRunning(false);
+    }
+
+    // ── 폴링 (1초마다 진행 상황 조회) ────────────────────
+    function startPolling() {
+      stopPolling();
+      pollTimer = setInterval(fetchStatus, 1000);
+      fetchStatus();
+    }
+    function stopPolling() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    async function fetchStatus() {
+      if (!currentRunId) return;
+      try {
+        const res = await fetch(`/admin/api/loadtest/${currentRunId}/status`);
+        const data = await res.json();
+        if (!res.ok || data.result === false) throw new Error(data.message);
+
+        const s = data.data;
+        updateMetrics(s);
+        pushTimeseries(s);
+
+        // 완료/중지 시 폴링 종료
+        if (s.status === 'DONE' || s.status === 'STOPPED' || s.status === 'FAILED') {
+          stopPolling();
+          setRunning(false);
+          showFinished(s);
+        }
+      } catch (e) {
+        console.error('상태 조회 실패', e);
+      }
+    }
+
+    // ── 지표 카드 갱신 ───────────────────────────────────
+    function updateMetrics(s) {
+      document.getElementById('mProcessed').textContent = (s.processed ?? 0).toLocaleString();
+      document.getElementById('mTotal').textContent     = (s.total ?? 0).toLocaleString();
+      document.getElementById('mSuccessRate').textContent = (s.successRate ?? 0) + '%';
+      document.getElementById('mFailed').textContent    = (s.failed ?? 0).toLocaleString();
+      document.getElementById('mP95').innerHTML         = (s.p95Ms ?? 0) + '<span class="fs-6">ms</span>';
+      document.getElementById('mAvg').textContent       = (s.avgMs ?? 0);
+      document.getElementById('mPods').textContent      = (s.podCount ?? 1);
+      document.getElementById('mQueue').textContent     = (s.queueLength ?? 0);
+
+      // 도넛
+      if (donutChart) {
+        donutChart.updateSeries([s.success ?? 0, s.failed ?? 0]);
+      }
+    }
+
+    // ── 시계열 누적 + 차트 갱신 ──────────────────────────
+    function pushTimeseries(s) {
+      tick++;
+      tsData.processed.push({ x: tick, y: s.processed ?? 0 });
+      tsData.queue.push({ x: tick, y: s.queueLength ?? 0 });
+      tsData.pods.push({ x: tick, y: s.podCount ?? 1 });
+
+      // 최근 60개만 유지
+      ['processed', 'queue', 'pods'].forEach(k => {
+        if (tsData[k].length > 60) tsData[k].shift();
+      });
+
+      if (tsChart) {
+        tsChart.updateSeries([
+          { name: '처리 완료', data: tsData.processed },
+          { name: '큐 길이',   data: tsData.queue },
+          { name: '파드 수',   data: tsData.pods }
+        ]);
+      }
+    }
+
+    // ── UI 상태 토글 ─────────────────────────────────────
+    function setRunning(running) {
+      document.getElementById('runBtn').classList.toggle('d-none', running);
+      document.getElementById('stopBtn').classList.toggle('d-none', !running);
+      document.getElementById('scenario').disabled = running;
+      document.getElementById('concurrency').disabled = running;
+      document.getElementById('totalRequests').disabled = running;
+
+      const banner = document.getElementById('statusBanner');
+      if (running) {
+        banner.classList.remove('d-none');
+        banner.style.background = '#E8FFF3';
+        document.getElementById('statusIcon').textContent = '⏳';
+        document.getElementById('statusTitle').textContent = '실행 중...';
+        document.getElementById('statusDesc').textContent = '부하를 발생시키고 실시간으로 관측 중입니다';
+      }
+    }
+
+    function showFinished(s) {
+      const banner = document.getElementById('statusBanner');
+      banner.classList.remove('d-none');
+      const ok = s.status === 'DONE';
+      banner.style.background = ok ? '#E8FFF3' : '#FFF5F8';
+      document.getElementById('statusIcon').textContent = ok ? '✅' : '⛔';
+      document.getElementById('statusTitle').textContent =
+        ok ? '완료' : (s.status === 'STOPPED' ? '중지됨' : '실패');
+      document.getElementById('statusDesc').textContent =
+        `총 ${s.total ?? 0}건 처리 · 성공률 ${s.successRate ?? 0}% · p95 ${s.p95Ms ?? 0}ms · 최대 파드 ${s.maxPods ?? s.podCount ?? 1}개`;
+    }
+
+    // ── 차트 초기화 ──────────────────────────────────────
+    function initCharts() {
+      if (typeof ApexCharts === 'undefined') { console.warn('ApexCharts 없음'); return; }
+
+      tsChart = new ApexCharts(document.getElementById('timeseriesChart'), {
+        series: [
+          { name: '처리 완료', data: [] },
+          { name: '큐 길이',   data: [] },
+          { name: '파드 수',   data: [] }
+        ],
+        chart: { type: 'line', height: 340, animations: { easing: 'linear', dynamicAnimation: { speed: 300 } }, toolbar: { show: false } },
+        colors: ['#3699FF', '#FFA800', '#0BB783'],
+        stroke: { curve: 'smooth', width: [3, 3, 4] },
+        xaxis: { type: 'numeric', labels: { show: false }, title: { text: '경과(초)' } },
+        yaxis: [
+          { title: { text: '처리/큐' } },
+          { opposite: true, title: { text: '파드 수' }, min: 0, max: 6, seriesName: '파드 수' }
+        ],
+        legend: { position: 'top' },
+        dataLabels: { enabled: false }
+      });
+      tsChart.render();
+
+      donutChart = new ApexCharts(document.getElementById('resultDonut'), {
+        series: [0, 0],
+        chart: { type: 'donut', height: 280 },
+        labels: ['성공', '실패'],
+        colors: ['#0BB783', '#F64E60'],
+        legend: { position: 'bottom' },
+        noData: { text: '실행 대기 중' }
+      });
+      donutChart.render();
+    }
+
+    function resetCharts() {
+      tick = 0;
+      tsData.processed = []; tsData.queue = []; tsData.pods = [];
+      if (tsChart) tsChart.updateSeries([
+        { name: '처리 완료', data: [] }, { name: '큐 길이', data: [] }, { name: '파드 수', data: [] }
+      ]);
+      if (donutChart) donutChart.updateSeries([0, 0]);
+    }
+  </script>
+</body>
+
+</html>
