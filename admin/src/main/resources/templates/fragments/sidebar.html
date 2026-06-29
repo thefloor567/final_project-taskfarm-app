@@ -69,6 +69,10 @@
               class="path3"></span><span class="path4"></span></i>
           <span class="menu-label">랭킹 감사</span>
         </a>
+        <a th:href="@{/loadtest}" class="admin-menu-item" th:classappend="${active == 'loadtest'} ? 'active'">
+  		  <i class="ki-duotone ki-rocket fs-3"><span class="path1"></span><span class="path2"></span></i>
+  		  <span class="menu-label">부하 시뮬레이터</span>
+		</a>
         <a th:href="@{/mails}" class="admin-menu-item" th:classappend="${active == 'mails'} ? 'active'">
           <i class="ki-duotone ki-sms fs-3"><span class="path1"></span><span class="path2"></span></i>
           <span class="menu-label">우편 발송</span>
