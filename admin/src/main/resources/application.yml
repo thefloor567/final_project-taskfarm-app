@@ -60,3 +60,31 @@ management:
 datasource:
   routing:
     enabled: true
+    
+# KEDA 조회 공통 설정
+taskfarm:
+  keda:
+    deployment-name: taskfarm-user
+    scaled-object-name: taskfarm-user-autoscaler
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+taskfarm:
+  keda:
+    namespace: taskfarm-dev
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+taskfarm:
+  keda:
+    namespace: taskfarm-prod
