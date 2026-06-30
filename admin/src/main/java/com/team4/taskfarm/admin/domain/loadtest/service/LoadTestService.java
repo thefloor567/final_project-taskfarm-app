@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
@@ -48,10 +49,24 @@ public class LoadTestService {
 
         String runId = UUID.randomUUID().toString().substring(0, 8);
         RunState state = new RunState(runId, scenarioName, request.getTotalRequests(), request.getConcurrency());
+
+        state.setAccessToken(request.getAccessToken());
+
         runs.put(runId, state);
 
-        for (int i = 0; i < request.getConcurrency(); i++) {
-            workerPool.submit(() -> runWorker(state, scenario));
+        int concurrency = request.getConcurrency();
+        AtomicInteger remainingWorkers = new AtomicInteger(concurrency);
+
+        for (int i = 0; i < concurrency; i++) {
+            workerPool.submit(() -> {
+                try {
+                    runWorker(state, scenario);
+                } finally {
+                    if (remainingWorkers.decrementAndGet() == 0) {
+                        state.clearToken();
+                    }
+                }
+            });
         }
 
         return runId;
@@ -75,11 +90,14 @@ public class LoadTestService {
     }
 
     public void stop(String runId) {
-        getRunState(runId).stop();
+        RunState state = getRunState(runId);
+        state.stop();
+        state.clearToken();
     }
 
     @PreDestroy
     public void shutdown() {
+        runs.values().forEach(RunState::clearToken);
         workerPool.shutdownNow();
     }
 
@@ -87,7 +105,7 @@ public class LoadTestService {
         while (state.tryAllocate()) {
             long startedAt = System.nanoTime();
             try {
-                scenario.runOnce();
+                scenario.runOnce(state.getAccessToken());
                 long elapsedMs = (System.nanoTime() - startedAt) / 1_000_000;
                 state.recordSuccess(elapsedMs);
             } catch (Exception e) {

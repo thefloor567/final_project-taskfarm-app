@@ -26,6 +26,8 @@ public class RunState {
     private final AtomicReference<Status> status = new AtomicReference<>(Status.RUNNING);
     private final List<Long> elapsedMsList = Collections.synchronizedList(new ArrayList<>());
 
+    private final AtomicReference<String> accessToken = new AtomicReference<>();
+
     public RunState(String runId, String scenario, int total, int concurrency) {
         this.runId = runId;
         this.scenario = scenario;
@@ -69,6 +71,18 @@ public class RunState {
         return status.get() == Status.RUNNING;
     }
 
+    public void setAccessToken(String token) {
+        accessToken.set(token);
+    }
+
+    public String getAccessToken() {
+        return accessToken.get();
+    }
+
+    public void clearToken() {
+        accessToken.set(null);
+    }
+
     public boolean tryAllocate() {
         while (isRunning()) {
             int current = allocated.get();
@@ -96,11 +110,15 @@ public class RunState {
     }
 
     public void stop() {
-        status.compareAndSet(Status.RUNNING, Status.STOPPED);
+        if (status.compareAndSet(Status.RUNNING, Status.STOPPED)) {
+            clearToken();   // 중지 즉시 토큰 폐기
+        }
     }
 
     public void fail() {
-        status.compareAndSet(Status.RUNNING, Status.FAILED);
+        if (status.compareAndSet(Status.RUNNING, Status.FAILED)) {
+            clearToken();   // 실패 즉시 토큰 폐기
+        }
     }
 
     public int getSuccessRate() {
@@ -141,7 +159,9 @@ public class RunState {
 
     private void finishIfComplete() {
         if (processed.get() >= total) {
-            status.compareAndSet(Status.RUNNING, Status.DONE);
+            if (status.compareAndSet(Status.RUNNING, Status.DONE)) {
+                clearToken();   // 정상 완료 즉시 토큰 폐기
+            }
         }
     }
 }
