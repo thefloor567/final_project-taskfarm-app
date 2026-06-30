@@ -26,7 +26,7 @@
               <label class="form-label fw-semibold fs-7 text-gray-700">시나리오</label>
               <select id="scenario" class="form-select">
                 <option value="GEMINI">✨ AI 추천 큐 투입 (Gemini)</option>
-                <!--<option value="LOGIN">🔑 로그인</option>-->
+                <option value="LOGIN">🔑 로그인</option>
                 <option value="SCHEDULER">⏰ 이벤트 스케줄러</option>
                 <option value="DB_LOCK">🔒 DB 락 경합</option>
               </select>
@@ -140,7 +140,7 @@
         <div class="col-xl-8">
           <div class="card shadow-sm h-100">
             <div class="card-header">
-              <h3 class="card-title fs-5">처리량 · 큐 길이 · 파드 수 (실시간)</h3>
+              <h3 class="card-title fs-5">초당 처리량 · 큐 길이 · 파드 수 (실시간)</h3>
             </div>
             <div class="card-body">
               <div id="timeseriesChart"></div>
@@ -173,10 +173,10 @@
 
     // 시나리오별 안내 문구
     const SCENARIO_HINT = {
-      GEMINI: 'AI 추천 작업을 큐(ai:recommend:queue)에 쌓아 KEDA 스케일아웃을 유발합니다',
-      //LOGIN:     '로그인 처리를 동시에 실행해 인증·DB 부하를 측정합니다',
+      GEMINI:    'AI 추천 작업을 큐(ai:recommend:queue)에 쌓아 KEDA 스케일아웃을 유발합니다',
+      LOGIN:     '로그인 처리를 동시에 실행해 인증·DB 부하를 측정합니다',
       SCHEDULER: '이벤트 스케줄러 작업을 동시에 트리거해 배치 처리 부하를 측정합니다',
-      DB_LOCK: '동일 자원에 동시 접근시켜 DB 락 경합·동시성 처리를 측정합니다'
+      DB_LOCK:   '동일 자원에 동시 접근시켜 DB 락 경합·동시성 처리를 측정합니다'
     };
 
     // ── 상태 ─────────────────────────────────────────────
@@ -196,8 +196,8 @@
     // ── 실행 ─────────────────────────────────────────────
     async function startLoadTest() {
       const body = {
-        scenario: document.getElementById('scenario').value,
-        concurrency: Number(document.getElementById('concurrency').value),
+        scenario:      document.getElementById('scenario').value,
+        concurrency:   Number(document.getElementById('concurrency').value),
         totalRequests: Number(document.getElementById('totalRequests').value)
       };
 
@@ -212,17 +212,22 @@
           throw new Error(data.message || '부하 테스트 시작 실패');
         }
 
-        currentRunId = data.data.runId;   // 백엔드가 발급한 실행 ID
+        currentRunId = data.data.runId;
         resetCharts();
+
+        pushTimeseries({
+          processed: 0,
+          queueLength: 0,
+          podCount: 1
+        });
+
         setRunning(true);
         await fetchStatus();
         startPolling();
 
       } catch (e) {
-        Swal.fire({
-          text: e.message, icon: 'error', buttonsStyling: false,
-          confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' }
-        });
+        Swal.fire({ text: e.message, icon: 'error', buttonsStyling: false,
+          confirmButtonText: '확인', customClass: { confirmButton: 'btn btn-primary' } });
       }
     }
 
@@ -240,7 +245,6 @@
     function startPolling() {
       stopPolling();
       pollTimer = setInterval(fetchStatus, 300);
-      fetchStatus();
     }
     function stopPolling() {
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -271,13 +275,13 @@
     // ── 지표 카드 갱신 ───────────────────────────────────
     function updateMetrics(s) {
       document.getElementById('mProcessed').textContent = (s.processed ?? 0).toLocaleString();
-      document.getElementById('mTotal').textContent = (s.total ?? 0).toLocaleString();
+      document.getElementById('mTotal').textContent     = (s.total ?? 0).toLocaleString();
       document.getElementById('mSuccessRate').textContent = (s.successRate ?? 0) + '%';
-      document.getElementById('mFailed').textContent = (s.failed ?? 0).toLocaleString();
-      document.getElementById('mP95').innerHTML = (s.p95Ms ?? 0) + '<span class="fs-6">ms</span>';
-      document.getElementById('mAvg').textContent = (s.avgMs ?? 0);
-      document.getElementById('mPods').textContent = (s.podCount ?? 1);
-      document.getElementById('mQueue').textContent = (s.queueLength ?? 0);
+      document.getElementById('mFailed').textContent    = (s.failed ?? 0).toLocaleString();
+      document.getElementById('mP95').innerHTML         = (s.p95Ms ?? 0) + '<span class="fs-6">ms</span>';
+      document.getElementById('mAvg').textContent       = (s.avgMs ?? 0);
+      document.getElementById('mPods').textContent      = (s.podCount ?? 1);
+      document.getElementById('mQueue').textContent     = (s.queueLength ?? 0);
 
       // 도넛
       if (donutChart) {
@@ -285,26 +289,46 @@
       }
     }
 
-    // ── 시계열 누적 + 차트 갱신 ──────────────────────────
-    function pushTimeseries(s) {
-      tick++;
-      tsData.processed.push({ x: tick, y: s.processed ?? 0 });
-      tsData.queue.push({ x: tick, y: s.queueLength ?? 0 });
-      tsData.pods.push({ x: tick, y: s.podCount ?? 1 });
-
-      // 최근 60개만 유지
-      ['processed', 'queue', 'pods'].forEach(k => {
-        if (tsData[k].length > 60) tsData[k].shift();
-      });
-
-      if (tsChart) {
-        tsChart.updateSeries([
-          { name: '처리 완료', data: tsData.processed },
-          { name: '큐 길이', data: tsData.queue },
-          { name: '파드 수', data: tsData.pods }
-        ]);
-      }
-    }
+    // ── 누적 processed 대신 초당 처리량 throughput 계산 ──────────────────────────
+    let lastProcessed = 0;
+	let lastStatusAt = Date.now();
+	
+	function pushTimeseries(s) {
+	  tick++;
+	
+	  const now = Date.now();
+	  const processed = Number(s.processed ?? 0);
+	  const queue = Number(s.queueLength ?? 0);
+	  const pods = Number(s.podCount ?? 1);
+	
+	  // 직전 상태 조회 이후 몇 초가 지났는지 계산
+	  const elapsedSec = Math.max((now - lastStatusAt) / 1000, 0.001);
+	
+	  // 이번 구간에서 새로 처리된 건수
+	  const deltaProcessed = Math.max(processed - lastProcessed, 0);
+	
+	  // 첫 점은 기준점이므로 처리량 0으로 표시
+	  const throughput = tick === 1 ? 0 : Math.round(deltaProcessed / elapsedSec);
+	
+	  tsData.processed.push({ x: tick, y: throughput });
+	  tsData.queue.push({ x: tick, y: queue });
+	  tsData.pods.push({ x: tick, y: pods });
+	
+	  lastProcessed = processed;
+	  lastStatusAt = now;
+	
+	  ['processed', 'queue', 'pods'].forEach(k => {
+	    if (tsData[k].length > 60) tsData[k].shift();
+	  });
+	
+	  if (tsChart) {
+	    tsChart.updateSeries([
+	      { name: '초당 처리량', data: tsData.processed },
+	      { name: '큐 길이', data: tsData.queue },
+	      { name: '파드 수', data: tsData.pods }
+	    ], true);
+	  }
+	}
 
     // ── UI 상태 토글 ─────────────────────────────────────
     function setRunning(running) {
@@ -341,11 +365,11 @@
       if (typeof ApexCharts === 'undefined') { console.warn('ApexCharts 없음'); return; }
 
       tsChart = new ApexCharts(document.getElementById('timeseriesChart'), {
-        series: [
-          { name: '처리 완료', data: [] },
-          { name: '큐 길이', data: [] },
-          { name: '파드 수', data: [] }
-        ],
+    	series: [
+    		  { name: '초당 처리량', data: [] },
+    		  { name: '큐 길이', data: [] },
+    		  { name: '파드 수', data: [] }
+    		],
         chart: { type: 'line', height: 340, animations: { easing: 'linear', dynamicAnimation: { speed: 300 } }, toolbar: { show: false } },
         markers: { size: 4 },
         colors: ['#3699FF', '#FFA800', '#0BB783'],
@@ -372,13 +396,26 @@
     }
 
     function resetCharts() {
-      tick = 0;
-      tsData.processed = []; tsData.queue = []; tsData.pods = [];
-      if (tsChart) tsChart.updateSeries([
-        { name: '처리 완료', data: [] }, { name: '큐 길이', data: [] }, { name: '파드 수', data: [] }
-      ]);
-      if (donutChart) donutChart.updateSeries([0, 0]);
-    }
+    	  tick = 0;
+    	  lastProcessed = 0;
+    	  lastStatusAt = Date.now();
+
+    	  tsData.processed = [];
+    	  tsData.queue = [];
+    	  tsData.pods = [];
+
+    	  if (tsChart) {
+    	    tsChart.updateSeries([
+    	      { name: '초당 처리량', data: [] },
+    	      { name: '큐 길이', data: [] },
+    	      { name: '파드 수', data: [] }
+    	    ], true);
+    	  }
+
+    	  if (donutChart) {
+    	    donutChart.updateSeries([0, 0]);
+    	  }
+    	}
   </script>
 </body>
 
