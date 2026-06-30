@@ -209,6 +209,7 @@
     let currentRunId = null;   // 백엔드가 발급하는 실행 ID
     let pollTimer = null;
     let tsChart = null, donutChart = null;
+    let chartReady = false;     // 차트 render 완료 여부 (push 전에 항상 확인)
     const tsData = { processed: [], queue: [], pods: [] };  // 시계열 누적
     let tick = 0;
 
@@ -352,7 +353,7 @@
       setRunning(false);
     }
 
-    // ── 폴링 (1초마다 진행 상황 조회) ────────────────────
+    // ── 폴링 (300ms마다 진행 상황 조회) ────────────────────
     function startPolling() {
       stopPolling();
       pollTimer = setInterval(fetchStatus, 300);
@@ -369,6 +370,7 @@
         if (!res.ok || data.result === false) throw new Error(data.message);
 
         const s = data.data;
+        if (!s) return;            // 방어: 데이터 없으면 차트/카드 갱신 스킵
         updateMetrics(s);
         pushTimeseries(s);
 
@@ -394,9 +396,11 @@
       document.getElementById('mPods').textContent = (s.podCount ?? 1);
       document.getElementById('mQueue').textContent = (s.queueLength ?? 0);
 
-      // 도넛
-      if (donutChart) {
-        donutChart.updateSeries([s.success ?? 0, s.failed ?? 0]);
+      // 도넛 (차트 준비된 경우만)
+      if (donutChart && chartReady) {
+        try {
+          donutChart.updateSeries([Number(s.success ?? 0), Number(s.failed ?? 0)]);
+        } catch (err) { console.warn('donut update skipped', err); }
       }
     }
 
@@ -432,12 +436,18 @@
         if (tsData[k].length > 60) tsData[k].shift();
       });
 
-      if (tsChart) {
-        tsChart.updateSeries([
-          { name: '초당 처리량', data: tsData.processed },
-          { name: '큐 길이', data: tsData.queue },
-          { name: '파드 수', data: tsData.pods }
-        ], true);
+      // 차트가 render 완료된 경우에만 갱신. animate 인자는 넘기지 않는다
+      // (시리즈 통째 교체 + animate=true 조합이 ApexCharts 내부 push 에러를 유발하므로 제거).
+      if (tsChart && chartReady) {
+        try {
+          tsChart.updateSeries([
+            { name: '초당 처리량', data: tsData.processed.slice() },
+            { name: '큐 길이', data: tsData.queue.slice() },
+            { name: '파드 수', data: tsData.pods.slice() }
+          ]);
+        } catch (err) {
+          console.warn('timeseries update skipped', err);
+        }
       }
     }
 
@@ -484,19 +494,31 @@
           { name: '큐 길이', data: [] },
           { name: '파드 수', data: [] }
         ],
-        chart: { type: 'line', height: 340, animations: { easing: 'linear', dynamicAnimation: { speed: 300 } }, toolbar: { show: false } },
-        markers: { size: 4 },
+        chart: {
+          type: 'line',
+          height: 340,
+          animations: { enabled: false },   // 시리즈 통째 교체 시 애니메이션 비활성화(내부 push 에러 방지)
+          toolbar: { show: false }
+        },
+        markers: { size: 0 },                // 마커 끔(시리즈 매핑 어긋날 때 마커 루프에서 에러나는 것 방지)
         colors: ['#3699FF', '#FFA800', '#0BB783'],
         stroke: { curve: 'smooth', width: [3, 3, 4] },
         xaxis: { type: 'numeric', labels: { show: false }, title: { text: '경과(초)' } },
+        // y축을 시리즈 인덱스 순서대로 명시(축-시리즈 자동매핑 제거 → 통째 교체 시 충돌 없음)
         yaxis: [
-          { title: { text: '처리/큐' } },
-          { opposite: true, title: { text: '파드 수' }, min: 0, max: 6, seriesName: '파드 수' }
+          { title: { text: '처리/큐' } },                                 // 0: 초당 처리량
+          { show: false },                                               // 1: 큐 길이(왼쪽축 공유)
+          { opposite: true, title: { text: '파드 수' }, min: 0, max: 6 } // 2: 파드 수(오른쪽축)
         ],
         legend: { position: 'top' },
         dataLabels: { enabled: false }
       });
-      tsChart.render();
+      tsChart.render().then(function () {
+        chartReady = true;
+      }).catch(function (err) {
+        console.warn('chart render error', err);
+        chartReady = true;   // render 실패해도 이후 갱신 시도는 try/catch로 보호되므로 플래그는 올림
+      });
 
       donutChart = new ApexCharts(document.getElementById('resultDonut'), {
         series: [0, 0],
@@ -518,16 +540,18 @@
       tsData.queue = [];
       tsData.pods = [];
 
-      if (tsChart) {
-        tsChart.updateSeries([
-          { name: '초당 처리량', data: [] },
-          { name: '큐 길이', data: [] },
-          { name: '파드 수', data: [] }
-        ], true);
+      if (tsChart && chartReady) {
+        try {
+          tsChart.updateSeries([
+            { name: '초당 처리량', data: [] },
+            { name: '큐 길이', data: [] },
+            { name: '파드 수', data: [] }
+          ]);
+        } catch (err) { console.warn('reset ts skipped', err); }
       }
 
-      if (donutChart) {
-        donutChart.updateSeries([0, 0]);
+      if (donutChart && chartReady) {
+        try { donutChart.updateSeries([0, 0]); } catch (err) { console.warn('reset donut skipped', err); }
       }
     }
   </script>
