@@ -218,7 +218,7 @@
           const tname = THREAT_NAME[p.threat.type] || '재해';
           const temoji = THREAT_BADGE[p.threat.type] || '⚠️';
           inner = `<div style="font-size:32px;">${temoji}</div>
-                     <div class="fs-9 text-danger fw-semibold">${tname}가 먹었어요</div>`;
+                     <div class="fs-9 text-danger fw-semibold">${tname}이(가) 피해를 입혔어요</div>`;
           bg = '#FFF5F8';
           action = `eatenInfo('${p.threat.type}')`;
         } else if (p.status === 'empty') {
@@ -282,7 +282,7 @@
       const tname = THREAT_NAME[type] || '재해';
       const temoji = THREAT_BADGE[type] || '⚠️';
       Swal.fire({
-        html: `${temoji} <b>${tname}가 작물을 먹었어요</b><br>
+        html: `${temoji} <b>${tname}이(가) 피해를 입혔어요</b><br>
                <span style="font-size:13px;color:#888;">${defenseHint(type)}</span>`,
         icon: 'info', buttonsStyling: false, confirmButtonText: '확인',
         customClass: { confirmButton: 'btn btn-primary' }
@@ -411,8 +411,8 @@
           const tname = THREAT_NAME[type] || '재해';
           const temoji = THREAT_BADGE[type] || '⚠️';
           Swal.fire({
-            html: `${temoji} <b>${tname}가 먹었어요!</b><br>
-                   <span style="font-size:13px;color:#888;">수확하려던 작물을 ${tname}가 가져갔어요</span>`,
+            html: `${temoji} <b>${tname}이(가) 피해를 입혔어요!</b><br>
+                   <span style="font-size:13px;color:#888;">수확하려던 작물을 ${tname}이(가) 가져갔어요</span>`,
             icon: 'warning', buttonsStyling: false, confirmButtonText: '확인',
             customClass: { confirmButton: 'btn btn-primary' }
           });
