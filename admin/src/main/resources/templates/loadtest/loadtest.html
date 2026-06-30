@@ -10,8 +10,18 @@
 
     <div class="admin-content">
 
-      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">부하 시뮬레이터</h1>
-      <p class="text-gray-500 fs-6 mb-6">시나리오별 동시 부하를 발생시키고, 처리량·지연·오토스케일링(KEDA)을 실시간 관측합니다</p>
+      <h1 class="fw-bolder fs-2 text-gray-900 mb-1">
+        부하 시뮬레이터
+        <span class="badge bg-secondary fs-7 align-middle ms-2">DEV 전용</span>
+      </h1>
+      <p class="text-gray-500 fs-6 mb-2">시나리오별 동시 부하를 발생시키고, 처리량·지연을 실시간 측정합니다</p>
+      <div class="alert alert-light border d-flex align-items-center mb-6" style="background:#F1FAFF;">
+        <span style="font-size:20px;" class="me-2">ℹ️</span>
+        <div class="fs-8 text-gray-700">
+          이 화면은 <strong>DEV 환경</strong>에서 처리량·지연·성공률을 측정합니다.
+          KEDA 오토스케일링(큐 길이·파드 수) 관측은 모니터링이 구성된 <strong>PROD 환경</strong>에서 수행합니다.
+        </div>
+      </div>
 
       <!-- ===================== 실행 패널 ===================== -->
       <div class="card shadow-sm mb-4">
@@ -132,16 +142,16 @@
           </div>
         </div>
         <div class="col-sm-6 col-xl-3">
-          <div class="card shadow-sm h-100">
+          <div class="card shadow-sm h-100" style="opacity:.6;">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start">
                 <div>
-                  <div class="fs-7 text-gray-500">파드 수 (KEDA)</div>
-                  <div class="fw-bolder fs-2 text-primary mt-1" id="mPods">1</div>
+                  <div class="fs-7 text-gray-500">파드 수 / 큐 (KEDA)</div>
+                  <div class="fw-bolder fs-2 text-gray-400 mt-1">N/A</div>
                 </div>
-                <span style="font-size:28px;">🚀</span>
+                <span style="font-size:28px; filter:grayscale(1);">🚀</span>
               </div>
-              <div class="fs-8 text-gray-400 mt-2">큐 길이 <span id="mQueue">0</span></div>
+              <div class="fs-8 text-gray-400 mt-2">PROD 환경에서 관측</div>
             </div>
           </div>
         </div>
@@ -166,7 +176,7 @@
         <div class="col-xl-8">
           <div class="card shadow-sm h-100">
             <div class="card-header">
-              <h3 class="card-title fs-5">초당 처리량 · 큐 길이 · 파드 수 (실시간)</h3>
+              <h3 class="card-title fs-5">초당 처리량 · p95 지연 (실시간)</h3>
             </div>
             <div class="card-body">
               <div id="timeseriesChart"></div>
@@ -210,7 +220,7 @@
     let pollTimer = null;
     let tsChart = null, donutChart = null;
     let chartReady = false;     // 차트 render 완료 여부 (push 전에 항상 확인)
-    const tsData = { processed: [], queue: [], pods: [] };  // 시계열 누적
+    const tsData = { processed: [], p95: [] };  // 시계열 누적 (처리량, p95 지연)
     let tick = 0;
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -327,8 +337,7 @@
 
         pushTimeseries({
           processed: 0,
-          queueLength: 0,
-          podCount: 1
+          p95Ms: 0
         });
 
         setRunning(true);
@@ -393,8 +402,7 @@
       document.getElementById('mFailed').textContent = (s.failed ?? 0).toLocaleString();
       document.getElementById('mP95').innerHTML = (s.p95Ms ?? 0) + '<span class="fs-6">ms</span>';
       document.getElementById('mAvg').textContent = (s.avgMs ?? 0);
-      document.getElementById('mPods').textContent = (s.podCount ?? 1);
-      document.getElementById('mQueue').textContent = (s.queueLength ?? 0);
+      // 파드 수/큐 길이(KEDA)는 PROD 전용이라 DEV 화면에서는 N/A 고정 — 갱신하지 않음
 
       // 도넛 (차트 준비된 경우만)
       if (donutChart && chartReady) {
@@ -413,8 +421,7 @@
 
       const now = Date.now();
       const processed = Number(s.processed ?? 0);
-      const queue = Number(s.queueLength ?? 0);
-      const pods = Number(s.podCount ?? 1);
+      const p95 = Number(s.p95Ms ?? 0);
 
       // 직전 상태 조회 이후 몇 초가 지났는지 계산
       const elapsedSec = Math.max((now - lastStatusAt) / 1000, 0.001);
@@ -426,24 +433,21 @@
       const throughput = tick === 1 ? 0 : Math.round(deltaProcessed / elapsedSec);
 
       tsData.processed.push({ x: tick, y: throughput });
-      tsData.queue.push({ x: tick, y: queue });
-      tsData.pods.push({ x: tick, y: pods });
+      tsData.p95.push({ x: tick, y: p95 });
 
       lastProcessed = processed;
       lastStatusAt = now;
 
-      ['processed', 'queue', 'pods'].forEach(k => {
+      ['processed', 'p95'].forEach(k => {
         if (tsData[k].length > 60) tsData[k].shift();
       });
 
-      // 차트가 render 완료된 경우에만 갱신. animate 인자는 넘기지 않는다
-      // (시리즈 통째 교체 + animate=true 조합이 ApexCharts 내부 push 에러를 유발하므로 제거).
+      // 차트가 render 완료된 경우에만 갱신.
       if (tsChart && chartReady) {
         try {
           tsChart.updateSeries([
             { name: '초당 처리량', data: tsData.processed.slice() },
-            { name: '큐 길이', data: tsData.queue.slice() },
-            { name: '파드 수', data: tsData.pods.slice() }
+            { name: 'p95 지연(ms)', data: tsData.p95.slice() }
           ]);
         } catch (err) {
           console.warn('timeseries update skipped', err);
@@ -481,7 +485,7 @@
       document.getElementById('statusTitle').textContent =
         ok ? '완료' : (s.status === 'STOPPED' ? '중지됨' : '실패');
       document.getElementById('statusDesc').textContent =
-        `총 ${s.total ?? 0}건 처리 · 성공률 ${s.successRate ?? 0}% · p95 ${s.p95Ms ?? 0}ms · 최대 파드 ${s.maxPods ?? s.podCount ?? 1}개`;
+        `총 ${s.total ?? 0}건 처리 · 성공률 ${s.successRate ?? 0}% · p95 ${s.p95Ms ?? 0}ms · 평균 ${s.avgMs ?? 0}ms`;
     }
 
     // ── 차트 초기화 ──────────────────────────────────────
@@ -491,24 +495,22 @@
       tsChart = new ApexCharts(document.getElementById('timeseriesChart'), {
         series: [
           { name: '초당 처리량', data: [] },
-          { name: '큐 길이', data: [] },
-          { name: '파드 수', data: [] }
+          { name: 'p95 지연(ms)', data: [] }
         ],
         chart: {
           type: 'line',
           height: 340,
-          animations: { enabled: false },   // 시리즈 통째 교체 시 애니메이션 비활성화(내부 push 에러 방지)
+          animations: { enabled: false },
           toolbar: { show: false }
         },
-        markers: { size: 0 },                // 마커 끔(시리즈 매핑 어긋날 때 마커 루프에서 에러나는 것 방지)
-        colors: ['#3699FF', '#FFA800', '#0BB783'],
-        stroke: { curve: 'smooth', width: [3, 3, 4] },
+        markers: { size: 0 },
+        colors: ['#3699FF', '#F1416C'],
+        stroke: { curve: 'smooth', width: [3, 3] },
         xaxis: { type: 'numeric', labels: { show: false }, title: { text: '경과(초)' } },
-        // y축을 시리즈 인덱스 순서대로 명시(축-시리즈 자동매핑 제거 → 통째 교체 시 충돌 없음)
+        // 0: 초당 처리량(왼쪽축), 1: p95 지연(오른쪽축)
         yaxis: [
-          { title: { text: '처리/큐' } },                                 // 0: 초당 처리량
-          { show: false },                                               // 1: 큐 길이(왼쪽축 공유)
-          { opposite: true, title: { text: '파드 수' }, min: 0, max: 6 } // 2: 파드 수(오른쪽축)
+          { title: { text: '초당 처리량' }, min: 0 },
+          { opposite: true, title: { text: 'p95 지연(ms)' }, min: 0 }
         ],
         legend: { position: 'top' },
         dataLabels: { enabled: false }
@@ -537,15 +539,13 @@
       lastStatusAt = Date.now();
 
       tsData.processed = [];
-      tsData.queue = [];
-      tsData.pods = [];
+      tsData.p95 = [];
 
       if (tsChart && chartReady) {
         try {
           tsChart.updateSeries([
             { name: '초당 처리량', data: [] },
-            { name: '큐 길이', data: [] },
-            { name: '파드 수', data: [] }
+            { name: 'p95 지연(ms)', data: [] }
           ]);
         } catch (err) { console.warn('reset ts skipped', err); }
       }
