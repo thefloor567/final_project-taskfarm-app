@@ -123,12 +123,12 @@
         const col = document.createElement('div');
         col.className = 'col-4';
 
+        // 클릭 이동 제거: goTo/actionHint 잔재 삭제 (정의 없이 사용돼 ReferenceError 나던 부분)
         col.innerHTML = `
-            <div class="card shadow-sm" style="cursor:pointer;" onclick="location.href='${goTo}'">
+            <div class="card shadow-sm">
                 <div class="card-body text-center py-4 px-1 position-relative">
                     <div style="font-size:36px;">${emojiOf(item.code)}</div>
                     <div class="fw-bold fs-7 text-gray-800 mt-1">${item.name}</div>
-                    ${actionHint}
                     <span class="badge badge-circle badge-primary position-absolute"
                           style="top:8px; right:8px;">${item.count}</span>
                 </div>
