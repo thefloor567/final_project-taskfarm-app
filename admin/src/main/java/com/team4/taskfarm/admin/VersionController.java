@@ -11,6 +11,6 @@ public class VersionController {
 
     @GetMapping("/version")
     public String version() {
-        return "taskfarm-admin version: v0.0.1";
+        return "taskfarm-admin version: v2026.0706.1";
     }
 }
