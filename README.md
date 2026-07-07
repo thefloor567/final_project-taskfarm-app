@@ -59,12 +59,11 @@ taskfarm-app/
 ---
 
 ## 🗂 3-Repo 구조 (GitOps)
-
 | 레포 | 책임 | 주요 내용 |
 |------|------|-----------|
 | **team4-taskfarm-app** (현재) | 애플리케이션 + CI | Spring Boot 소스, Dockerfile, GitHub Actions (OIDC → ECR) |
-| **team4-taskfarm-config** | 배포 (CD) | K8s 매니페스트(Kustomize), ArgoCD Application, ExternalSecret |
-| **team4-taskfarm-infra** | 인프라 | Terraform (modules + envs/dev·prod) |
+| [**team4-taskfarm-config**](https://github.com/CLD-05/team4-taskfarm-config) | 배포 (CD) | K8s 매니페스트(Kustomize), ArgoCD Application, ExternalSecret |
+| [**team4-taskfarm-infra**](https://github.com/CLD-05/team4-taskfarm-infra) | 인프라 | Terraform (modules + envs/dev·prod) |
 
 > 💡 CI(app)가 이미지를 ECR에 올리고 **config 레포의 image tag를 갱신**하면,
 > ArgoCD가 config 레포를 추적해 클러스터에 동기화합니다. app 레포는 클러스터를 직접 건드리지 않습니다.
